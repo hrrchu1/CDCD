@@ -138,6 +138,14 @@ th.cd:hover{background:rgba(23,23,23,.03)}
 .sub-tab.active{background:transparent;color:var(--tx);font-weight:700;box-shadow:inset 0 -2px 0 var(--tx)}
 .sub-content{display:none;background:var(--sur);border:1px solid var(--bd);border-radius:12px;margin:0 22px;box-shadow:0 8px 24px rgba(0,0,0,.06);overflow:auto}
 .sub-content.active{display:block}
+/* 방문객 모드: 간트 외 탭은 들어가도 흐리게 + 로그인 안내 (데이터 자체도 안 받음) */
+body.cd-public .sub-content:not(#scontent-0){position:relative;min-height:360px}
+body.cd-public .sub-content:not(#scontent-0)>:not(.cd-lock){filter:blur(6px);pointer-events:none;user-select:none}
+.cd-lock{display:none}
+body.cd-public .cd-lock{display:flex;position:absolute;inset:0;z-index:50;justify-content:center;align-items:flex-start;padding-top:96px}
+.cd-lock-card{background:var(--sur);border:1px solid var(--bd2);border-radius:10px;padding:20px 28px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px}
+.cd-lock-card b{font-size:15px;color:var(--tx)}
+.cd-lock-card span{font-size:13px;color:var(--tx3);margin-bottom:8px}
 /* 부팅 베일 — Supabase 로드 전까지 시드 데이터 가림 */
 .boot-veil{position:fixed;inset:0;z-index:9000;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;transition:opacity .25s ease}
 .boot-veil.hide{opacity:0;pointer-events:none}
@@ -796,7 +804,7 @@ td.cell.leave{border-right-color:transparent}
 
   <div class="page-header" style="flex-direction:column;align-items:flex-start;gap:4px;padding:8px 14px">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;width:100%;overflow:hidden">
-      <div class="nav-logo" style="flex-shrink:0"><b>NHN</b><span> marketing design</span><span style="font-size:11px;opacity:.45;margin-left:6px;font-weight:400">v1112-3</span></div>
+      <div class="nav-logo" style="flex-shrink:0"><b>NHN</b><span> marketing design</span><span style="font-size:11px;opacity:.45;margin-left:6px;font-weight:400">v1112-4</span></div>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;width:100%" id="schedule-btn-row">
       <div class="mnav">
@@ -2488,8 +2496,12 @@ async function reloadData(){
 }
 function applyAccessMode(){
   const pub = !_auth;
-  [1,2,3,4,5].forEach(i=>{ const t=document.getElementById('stab-'+i); if(t) t.style.display = pub?'none':''; });
-  if(pub && curSubTab!==0) switchSubTab(0);
+  document.body.classList.toggle('cd-public', pub);
+  [1,2,3,4,5].forEach(i=>{
+    const c = document.getElementById('scontent-'+i);
+    if(c && !c.querySelector(':scope > .cd-lock')) c.insertAdjacentHTML('beforeend',
+      '<div class="cd-lock"><div class="cd-lock-card"><b>팀원만 볼 수 있어요</b><span>로그인하면 바로 보여요</span><button class="btn btn-p" onclick="toggleLogin()">로그인</button></div></div>');
+  });
   const lb = document.getElementById('login-btn'), ll = document.getElementById('login-label');
   if(lb) lb.style.display = _isAdmin ? 'none' : '';
   if(ll) ll.textContent = (_auth && !_isAdmin) ? (getAllPeople().find(p=>'member:'+p.id===_auth.k)?.name||'팀원')+' ✓' : '로그인';
