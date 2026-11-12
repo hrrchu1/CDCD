@@ -804,7 +804,7 @@ td.cell.leave{border-right-color:transparent}
 
   <div class="page-header" style="flex-direction:column;align-items:flex-start;gap:4px;padding:8px 14px">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;width:100%;overflow:hidden">
-      <div class="nav-logo" style="flex-shrink:0"><b>NHN</b><span> marketing design</span><span style="font-size:11px;opacity:.45;margin-left:6px;font-weight:400">v1112-4</span></div>
+      <div class="nav-logo" style="flex-shrink:0"><b>NHN</b><span> marketing design</span><span style="font-size:11px;opacity:.45;margin-left:6px;font-weight:400">v1112-5</span></div>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;width:100%" id="schedule-btn-row">
       <div class="mnav">
@@ -1230,7 +1230,7 @@ td.cell.leave{border-right-color:transparent}
       <button class="modal-close" onclick="closeLoginModal()">✕</button>
     </div>
     <div style="padding:20px">
-      <div style="font-size:15px;color:var(--tx2);margin-bottom:12px">이름을 고르고 비밀번호를 입력해주세요</div>
+      <div style="font-size:15px;color:var(--tx2);margin-bottom:12px">이름을 고르고 팀 공용 비밀번호를 입력해주세요</div>
       <select id="login-who" style="width:100%;border:1px solid var(--bd2);border-radius:8px;padding:9px 12px;font-size:15px;outline:none;box-sizing:border-box;margin-bottom:8px;background:var(--sur);color:var(--tx)"></select>
       <input type="password" id="login-pw-input" placeholder="비밀번호"
         style="width:100%;border:1px solid var(--bd2);border-radius:8px;padding:9px 12px;font-size:15px;outline:none;box-sizing:border-box"
@@ -2469,11 +2469,11 @@ function saveEditIdea(idx, wrap){
 // 관리자·툴 잠금·팀원 비밀번호는 Supabase cdcd_secrets 테이블에만 암호화 저장 (확인은 cdcd_verify RPC)
 let _isAdmin = false;
 // 데이터 접근: 방문객 = cdcd_public(간트용 일부만, 읽기 전용) / 팀원·관리자 = cdcd_load·cdcd_save (비번 확인)
-let _auth = null; // {k:'admin'|'member:<id>', pw}
+let _auth = null; // {k:'admin', pw} | {k:'team', pw, id} — 팀원은 공용 비번 + 고른 이름(id)
 function savedAuths(){
   const a = [];
   const ap = localStorage.getItem('cd_admin'); if(ap) a.push({k:'admin', pw:ap});
-  try{ const m = JSON.parse(localStorage.getItem('cd_member')||'null'); if(m?.id && m?.pw) a.push({k:'member:'+m.id, pw:m.pw}); }catch(e){}
+  try{ const m = JSON.parse(localStorage.getItem('cd_member')||'null'); if(m?.id && m?.pw) a.push({k:'team', pw:m.pw, id:m.id}); }catch(e){}
   return a;
 }
 async function loadFull(auth){
@@ -2481,7 +2481,7 @@ async function loadFull(auth){
   if(error || !data?.main) return false;
   _auth = auth;
   _isAdmin = auth.k === 'admin';
-  if(!_isAdmin) _rvPersonId = auth.k.slice(7); // 팀원 로그인 = 리뷰 로그인
+  if(!_isAdmin) _rvPersonId = auth.id; // 팀원 로그인 = 리뷰 로그인 (고른 이름으로)
   loadFromSbData(data.main);
   if(data.avatars?.avatarImgs){ avatarImgs = data.avatars.avatarImgs; renderTable(); }
   applyAccessMode();
@@ -2504,7 +2504,7 @@ function applyAccessMode(){
   });
   const lb = document.getElementById('login-btn'), ll = document.getElementById('login-label');
   if(lb) lb.style.display = _isAdmin ? 'none' : '';
-  if(ll) ll.textContent = (_auth && !_isAdmin) ? (getAllPeople().find(p=>'member:'+p.id===_auth.k)?.name||'팀원')+' ✓' : '로그인';
+  if(ll) ll.textContent = (_auth && !_isAdmin) ? (getAllPeople().find(p=>p.id===_auth.id)?.name||'팀원')+' ✓' : '로그인';
 }
 function toggleLogin(){
   if(_auth){ if(confirm('로그아웃할까요?')){ localStorage.removeItem('cd_member'); location.reload(); } return; }
@@ -2518,7 +2518,7 @@ function closeLoginModal(){ document.getElementById('login-modal').classList.rem
 async function submitLogin(){
   const id = document.getElementById('login-who').value;
   const pw = document.getElementById('login-pw-input').value;
-  if(!(await loadFull({k:'member:'+id, pw}))){ document.getElementById('login-pw-err').style.display=''; return; }
+  if(!(await loadFull({k:'team', pw, id}))){ document.getElementById('login-pw-err').style.display=''; return; }
   localStorage.setItem('cd_member', JSON.stringify({id, pw}));
   closeLoginModal();
   showToast('로그인했어요');
@@ -2527,13 +2527,6 @@ async function cdcdVerify(k, pw){
   if(!_sb || !pw) return false;
   const { data, error } = await _sb.rpc('cdcd_verify', { p_k: k, p_pw: pw });
   return !error && data === true;
-}
-async function setMemberPw(mid, inp){
-  const v = inp.value.trim(); if(!v) return;
-  const { data, error } = await _sb.rpc('cdcd_set_pw', { p_admin_pw: localStorage.getItem('cd_admin')||'', p_k: 'member:'+mid, p_new_pw: v });
-  if(error || data !== true){ showToast('비밀번호 저장 실패 — 관리자 모드를 껐다 다시 켜 주세요','error'); return; }
-  inp.value = ''; inp.placeholder = '저장됨';
-  showToast('비밀번호를 바꿨어요');
 }
 
 function toggleAdmin(){
@@ -3502,7 +3495,7 @@ function selectRvPerson(personId){
   _rvSelectedId = personId;
   const person = getAllPeople().find(p=>p.id===personId);
   document.getElementById('rv-pw-wrap').style.display='';
-  document.getElementById('rv-pw-name').textContent = `${person?.name}님의 비밀번호를 입력하세요`;
+  document.getElementById('rv-pw-name').textContent = `${person?.name}님, 팀 공용 비밀번호를 입력하세요`;
   document.getElementById('rv-login-pw').value='';
   document.getElementById('rv-login-err').style.display='none';
   setTimeout(()=>document.getElementById('rv-login-pw').focus(), 100);
@@ -3521,7 +3514,7 @@ async function loginReview(){
   const errEl = document.getElementById('rv-login-err');
   if(!personId){ errEl.textContent='이름을 선택해주세요'; errEl.style.display=''; return; }
   const person = getAllPeople().find(p=>p.id===personId);
-  if(!person||!(await cdcdVerify('member:'+personId, pw))){ errEl.textContent='비밀번호가 올바르지 않아요'; errEl.style.display=''; return; }
+  if(!person||!(await cdcdVerify('team', pw))){ errEl.textContent='비밀번호가 올바르지 않아요'; errEl.style.display=''; return; }
   errEl.style.display='none';
   _rvPersonId = personId;
   _rvSelectedId = null;
@@ -6676,12 +6669,6 @@ function renderTeamList(){
         <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:0">
           <input class="tm-name-input" value="${m.name}" placeholder="이름" draggable="false" oninput="updateMember('${g.id}','${m.id}','name',this.value)">
           <input class="tm-role-input" value="${m.role}" placeholder="역할" draggable="false" oninput="updateMember('${g.id}','${m.id}','role',this.value)">
-        </div>
-        <div style="display:flex;flex-direction:column;gap:3px;align-items:flex-end">
-          <div style="font-size:11px;color:var(--tx3)">비밀번호</div>
-          <input type="password" value="" placeholder="새 비번" draggable="false" autocomplete="new-password"
-            onchange="setMemberPw('${m.id}',this)"
-            style="width:72px;border:1px solid var(--bd2);border-radius:6px;padding:3px 6px;font-size:13px;font-family:'Pretendard',sans-serif;background:var(--sf2);color:var(--tx);outline:none">
         </div>
         <div class="color-input-wrap" title="개인 컬러">
           <div class="color-swatch" style="background:${ac};width:18px;height:18px;border-radius:50%;border:2px solid rgba(0,0,0,.1)" id="ac-sw-${m.id}"></div>
