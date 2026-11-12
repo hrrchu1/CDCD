@@ -47,6 +47,9 @@ body{font-family:'Pretendard',sans-serif;background:var(--bg);color:var(--tx);mi
 .btn-leave{background:var(--key);color:#171717;border:1px solid var(--key2)}.btn-leave:hover{background:var(--key2)}
 .btn-danger{background:#e53e3e;color:#fff}.btn-danger:hover{background:#dc2626}
 .btn-g{background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)}.btn-g:hover{color:var(--tx);border-color:#aaa}
+/* 로그인 버튼(팀원·관리자): 기능 버튼과 구분되는 블루 — 로그인 전 외곽선, 로그인 후 채움 */
+.btn-auth{background:transparent;color:#1547F7;border:1px solid #1547F7}.btn-auth:hover{background:#1547F714}
+.btn-auth.on{background:#1547F7;color:#fff;border-color:#1547F7}.btn-auth.on:hover{background:#1039C9;border-color:#1039C9}
 .btn-danger{background:#fff5f5;color:#e53e3e;border:1px solid #fcc}.btn-danger:hover{background:#fee2e2}
 
 /* ── LEGEND ── */
@@ -715,6 +718,7 @@ td.cell.leave{border-right-color:transparent}
 }
 /* 잉크 필 위 텍스트: 흰→검 반전 */
 :root[data-theme="dark"] .btn-p{color:#171717}
+:root[data-theme="dark"] .btn-auth:not(.on){color:#8BA4FF;border-color:#8BA4FF}
 :root[data-theme="dark"] .status-btn.active{color:#171717}
 :root[data-theme="dark"] .tb-btn.active{color:#171717}
 :root[data-theme="dark"] .grm-vbtn.active{color:#171717}
@@ -732,7 +736,7 @@ td.cell.leave{border-right-color:transparent}
 :root[data-theme="dark"] .date-spinner{background:var(--sf2)}
 :root[data-theme="dark"] .date-spinner .ds-arrow{background:#2e2e2e;border-color:var(--bd2)}
 :root[data-theme="dark"] .ds-day{background:var(--sf2);border-color:var(--bd2)}
-:root[data-theme="dark"] .page-header button:not(.btn-leave){background:var(--sf2)!important;color:var(--tx2)!important;border-color:var(--bd2)!important}
+:root[data-theme="dark"] .page-header button:not(.btn-leave):not(.btn-auth){background:var(--sf2)!important;color:var(--tx2)!important;border-color:var(--bd2)!important}
 :root[data-theme="dark"] .ppill{background:var(--sf2)!important;color:var(--tx)!important}
 :root[data-theme="dark"] .lv-pill{background:var(--sf2)!important;color:var(--tx2)!important}
 :root[data-theme="dark"] #cmod .status-btn{background:var(--sf2)}
@@ -808,7 +812,7 @@ td.cell.leave{border-right-color:transparent}
 
   <div class="page-header" style="flex-direction:column;align-items:flex-start;gap:4px;padding:8px 14px">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;width:100%;overflow:hidden">
-      <div class="nav-logo" style="flex-shrink:0"><b>NHN</b><span> marketing design</span><span style="font-size:11px;opacity:.45;margin-left:6px;font-weight:400">v1112-10</span></div>
+      <div class="nav-logo" style="flex-shrink:0"><b>NHN</b><span> marketing design</span><span style="font-size:11px;opacity:.45;margin-left:6px;font-weight:400">v1112-11</span></div>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;width:100%" id="schedule-btn-row">
       <div class="mnav">
@@ -818,8 +822,8 @@ td.cell.leave{border-right-color:transparent}
       </div>
       <button id="theme-btn" onclick="toggleTheme()" title="다크모드 전환" style="width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:6px;border:1px solid var(--bd2);background:var(--sur);cursor:pointer;padding:0;color:var(--tx2)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
       <button onclick="openBarOpMod()" title="일정바 진하기 조절" style="width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:6px;border:1px solid var(--bd2);background:var(--sur);cursor:pointer;padding:0;color:var(--tx2)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="7" x2="21" y2="7"/><circle cx="15" cy="7" r="3" fill="#fff"/><line x1="3" y1="17" x2="21" y2="17"/><circle cx="9" cy="17" r="3" fill="#fff"/></svg></button>
-      <button id="login-btn" class="btn btn-g" onclick="toggleLogin()"><span id="login-label">로그인</span></button>
-      <button id="admin-btn" class="btn btn-g" onclick="toggleAdmin()" style="display:flex;align-items:center;gap:4px"><span id="admin-label">관리자</span></button>
+      <button id="login-btn" class="btn btn-auth" onclick="toggleLogin()"><span id="login-label">로그인</span></button>
+      <button id="admin-btn" class="btn btn-auth" onclick="toggleAdmin()" style="display:flex;align-items:center;gap:4px"><span id="admin-label">관리자</span></button>
       <button class="btn btn-g" onclick="openProjMgr()">프로젝트</button>
       <button class="btn btn-g" onclick="openTeamMgr()">팀원 관리</button>
       <button class="btn btn-leave" onclick="openLeaveModal(null,null)">휴가</button>
@@ -2508,7 +2512,7 @@ function applyAccessMode(){
       '<div class="cd-lock"><div class="cd-lock-card"><b>팀원만 볼 수 있어요</b><span>로그인하면 바로 보여요</span><button class="btn btn-p" onclick="toggleLogin()">로그인</button></div></div>');
   });
   const lb = document.getElementById('login-btn'), ll = document.getElementById('login-label');
-  if(lb) lb.style.display = _isAdmin ? 'none' : '';
+  if(lb){ lb.style.display = _isAdmin ? 'none' : ''; lb.classList.toggle('on', !!_auth && !_isAdmin); }
   if(ll) ll.textContent = (_auth && !_isAdmin) ? '팀원 ✓' : '로그인';
 }
 function toggleLogin(){
@@ -2577,13 +2581,8 @@ async function submitAdminPw(){
 function applyAdminMode(){
   const btn = document.getElementById('admin-btn');
   const label = document.getElementById('admin-label');
-  if(_isAdmin){
-    if(btn){ btn.style.background='#171717'; btn.style.color='#fff'; btn.style.borderColor='#171717'; }
-    if(label) label.textContent='관리자 ✓';
-  } else {
-    if(btn){ btn.style.background='#fafafa'; btn.style.color='var(--tx2)'; btn.style.borderColor='var(--bd2)'; }
-    if(label) label.textContent='관리자';
-  }
+  if(btn) btn.classList.toggle('on', _isAdmin);
+  if(label) label.textContent = _isAdmin ? '관리자 ✓' : '관리자';
   // 날짜 헤더 커서: 관리자만 pointer
   document.querySelectorAll('th.cd').forEach(th=>{
     th.style.cursor = _isAdmin ? 'pointer' : 'default';
