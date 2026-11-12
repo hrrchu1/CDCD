@@ -800,7 +800,7 @@ td.cell.leave{border-right-color:transparent}
 
   <div class="page-header" style="flex-direction:column;align-items:flex-start;gap:4px;padding:8px 14px">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;width:100%;overflow:hidden">
-      <div class="nav-logo" style="flex-shrink:0"><b>NHN</b><span> marketing design</span><span style="font-size:11px;opacity:.45;margin-left:6px;font-weight:400">v0915-2</span></div>
+      <div class="nav-logo" style="flex-shrink:0"><b>NHN</b><span> marketing design</span><span style="font-size:11px;opacity:.45;margin-left:6px;font-weight:400">v1112-1</span></div>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;width:100%" id="schedule-btn-row">
       <div class="mnav">
@@ -1648,15 +1648,15 @@ let PROJECTS = [
 
 let GROUPS = [
   {id:'grp_d', label:'디자인 파트', gc:'#2563eb', members:[
-    {id:'d1',pw:'v4apbp',name:'정지예',role:'디자인'},{id:'d2',pw:'55i4mi',name:'임석환',role:'디자인'},
-    {id:'d3',pw:'efpe7i',name:'최희영',role:'디자인'},{id:'d4',pw:'jnfp7c',name:'한승연',role:'디자인'},
+    {id:'d1',name:'정지예',role:'디자인'},{id:'d2',name:'임석환',role:'디자인'},
+    {id:'d3',name:'최희영',role:'디자인'},{id:'d4',name:'한승연',role:'디자인'},
   ]},
   {id:'grp_v', label:'영상 파트',  gc:'#059669', members:[
-    {id:'g1',pw:'vcdii7',name:'현희진',role:'팀장', ac:'#7c3aed'},
-    {id:'v1',pw:'et3e1y',name:'양아름솔',role:'영상'},{id:'v2',pw:'38wtux',name:'신창준',role:'영상'},
-    {id:'v3',pw:'277i1n',name:'김지혜',role:'영상'},{id:'v4',pw:'69wud2',name:'배강현',role:'영상'},
-    {id:'v5',pw:'fd9fjk',name:'임성환',role:'영상'},{id:'v6',pw:'9yrbu8',name:'남가운',role:'영상'},
-    {id:'v7',pw:'i8guad',name:'김나현',role:'영상'},
+    {id:'g1',name:'현희진',role:'팀장', ac:'#7c3aed'},
+    {id:'v1',name:'양아름솔',role:'영상'},{id:'v2',name:'신창준',role:'영상'},
+    {id:'v3',name:'김지혜',role:'영상'},{id:'v4',name:'배강현',role:'영상'},
+    {id:'v5',name:'임성환',role:'영상'},{id:'v6',name:'남가운',role:'영상'},
+    {id:'v7',name:'김나현',role:'영상'},
   ]},
 ];
 function getPeople(){ return GROUPS.flatMap(g=>g.members).filter(m=>!m.inactive); } // 활성 팀원만
@@ -2438,8 +2438,20 @@ function saveEditIdea(idx, wrap){
 // ════════════════════════════════════════════
 //  ADMIN AUTH
 // ════════════════════════════════════════════
-const ADMIN_PW = 'cd20267';
-let _isAdmin = localStorage.getItem('cd_admin') === ADMIN_PW;
+// 관리자·툴 잠금·팀원 비밀번호는 Supabase cdcd_secrets 테이블에만 암호화 저장 (확인은 cdcd_verify RPC)
+let _isAdmin = false; // 저장된 관리자 비번(cd_admin)은 initSupabase에서 cdcd_verify로 재확인
+async function cdcdVerify(k, pw){
+  if(!_sb || !pw) return false;
+  const { data, error } = await _sb.rpc('cdcd_verify', { p_k: k, p_pw: pw });
+  return !error && data === true;
+}
+async function setMemberPw(mid, inp){
+  const v = inp.value.trim(); if(!v) return;
+  const { data, error } = await _sb.rpc('cdcd_set_pw', { p_admin_pw: localStorage.getItem('cd_admin')||'', p_k: 'member:'+mid, p_new_pw: v });
+  if(error || data !== true){ showToast('비밀번호 저장 실패 — 관리자 모드를 껐다 다시 켜 주세요','error'); return; }
+  inp.value = ''; inp.placeholder = '저장됨';
+  showToast('비밀번호를 바꿨어요');
+}
 
 function toggleAdmin(){
   if(_isAdmin){
@@ -2455,11 +2467,11 @@ function toggleAdmin(){
   }
 }
 function closeAdminModal(){ document.getElementById('admin-modal').classList.remove('open'); }
-function submitAdminPw(){
+async function submitAdminPw(){
   const pw = document.getElementById('admin-pw-input').value;
-  if(pw === ADMIN_PW){
+  if(await cdcdVerify('admin', pw)){
     _isAdmin = true;
-    localStorage.setItem('cd_admin', ADMIN_PW);
+    localStorage.setItem('cd_admin', pw);
     closeAdminModal();
     applyAdminMode();
     showToast('관리자 모드 활성화');
@@ -3423,13 +3435,13 @@ function cancelRvLogin(){
   document.getElementById('rv-login-err').style.display='none';
 }
 
-function loginReview(){
+async function loginReview(){
   const personId = _rvSelectedId;
   const pw = document.getElementById('rv-login-pw')?.value;
   const errEl = document.getElementById('rv-login-err');
   if(!personId){ errEl.textContent='이름을 선택해주세요'; errEl.style.display=''; return; }
   const person = getAllPeople().find(p=>p.id===personId);
-  if(!person||person.pw!==pw){ errEl.textContent='비밀번호가 올바르지 않아요'; errEl.style.display=''; return; }
+  if(!person||!(await cdcdVerify('member:'+personId, pw))){ errEl.textContent='비밀번호가 올바르지 않아요'; errEl.style.display=''; return; }
   errEl.style.display='none';
   _rvPersonId = personId;
   _rvSelectedId = null;
@@ -4000,17 +4012,16 @@ function updateLinkBtn(btnId, val){
   }
 }
 
-const TOOL_PW = 'mcdc';
 let _toolPwVerified = false;
 
-function togglePw(id, btn){
+async function togglePw(id, btn){
   const inp = document.getElementById(id);
   if(!inp) return;
   if(inp.type === 'password'){
     // 비번 표시 전 MCD 확인
     if(!_toolPwVerified){
       const entered = prompt('비밀번호를 입력하세요:');
-      if(entered !== TOOL_PW){ showToast('비밀번호가 틀렸어요','error'); return; }
+      if(!(await cdcdVerify('tool', entered))){ showToast('비밀번호가 틀렸어요','error'); return; }
       _toolPwVerified = true;
     }
     inp.type = 'text';
@@ -6612,8 +6623,8 @@ function renderTeamList(){
         </div>
         <div style="display:flex;flex-direction:column;gap:3px;align-items:flex-end">
           <div style="font-size:11px;color:var(--tx3)">비밀번호</div>
-          <input type="text" value="${m.pw||''}" placeholder="비번" draggable="false"
-            oninput="updateMember('${g.id}','${m.id}','pw',this.value)"
+          <input type="password" value="" placeholder="새 비번" draggable="false" autocomplete="new-password"
+            onchange="setMemberPw('${m.id}',this)"
             style="width:72px;border:1px solid var(--bd2);border-radius:6px;padding:3px 6px;font-size:13px;font-family:'Pretendard',sans-serif;background:var(--sf2);color:var(--tx);outline:none">
         </div>
         <div class="color-input-wrap" title="개인 컬러">
@@ -6915,6 +6926,7 @@ async function initSupabase(){
       loadFromSbData(data.payload);
       showToast('Supabase 연결 완료! 팀 데이터를 불러왔어요.');
     }
+    if(await cdcdVerify('admin', localStorage.getItem('cd_admin'))){ _isAdmin = true; applyAdminMode(); renderTable(); }
 
     // 아바타 사진은 id:2 행에서 별도 로드 (메인 payload 비대 방지)
     try{
