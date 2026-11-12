@@ -492,6 +492,10 @@ a[href]{pointer-events:auto!important;cursor:pointer!important}
 .tool-cell-input{width:100%;border:none;outline:none;background:transparent;font-family:'Pretendard',sans-serif;font-size:15px;color:var(--tx);padding:10px 14px;transition:background .1s;box-sizing:border-box}
 .tool-cell-input:focus{background:#1547F710}
 .tool-cell-input::placeholder{color:var(--tx3);opacity:.6}
+.tool-pw-wrap{display:flex;align-items:center;position:relative}
+.tool-pw-wrap input{padding-right:32px}
+.tool-pw-eye{position:absolute;right:8px;background:none;border:none;cursor:pointer;color:var(--tx3);font-size:15px;padding:2px 4px;border-radius:4px;transition:color .1s}
+.tool-pw-eye:hover{color:var(--tx)}
 .tool-del-cell{width:36px;text-align:center;padding:0}
 .tool-del-btn{width:24px;height:24px;border-radius:50%;border:none;background:transparent;color:var(--tx3);cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .12s,background .12s;margin:0 auto}
 .tool-row:hover .tool-del-btn{opacity:.5}
@@ -804,7 +808,7 @@ td.cell.leave{border-right-color:transparent}
 
   <div class="page-header" style="flex-direction:column;align-items:flex-start;gap:4px;padding:8px 14px">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;width:100%;overflow:hidden">
-      <div class="nav-logo" style="flex-shrink:0"><b>NHN</b><span> marketing design</span><span style="font-size:11px;opacity:.45;margin-left:6px;font-weight:400">v1112-8</span></div>
+      <div class="nav-logo" style="flex-shrink:0"><b>NHN</b><span> marketing design</span><span style="font-size:11px;opacity:.45;margin-left:6px;font-weight:400">v1112-9</span></div>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;width:100%" id="schedule-btn-row">
       <div class="mnav">
@@ -1083,6 +1087,7 @@ td.cell.leave{border-right-color:transparent}
             <th class="tool-th" style="width:130px">종류</th>
             <th class="tool-th" style="width:200px">Tool</th>
             <th class="tool-th" style="width:180px">아이디</th>
+            <th class="tool-th" style="width:180px">비밀번호</th>
             <th class="tool-th">기타 정보</th>
             <th class="tool-th-del"></th>
           </tr>
@@ -3882,6 +3887,11 @@ function renderToolTable(){
         oninput="toolRows[${idx}].site=this.value;fbPush()"></td>
       <td><input class="tool-cell-input" value="${escH(row.user)}" placeholder="아이디 / 이메일"
         oninput="toolRows[${idx}].user=this.value;fbPush()"></td>
+      <td><div class="tool-pw-wrap">
+        <input class="tool-cell-input" type="password" value="${escH(row.pw)}" placeholder="비밀번호"
+          id="pw-${row.id}" oninput="toolRows[${idx}].pw=this.value;fbPush()">
+        <button class="tool-pw-eye" onclick="togglePw('pw-${row.id}',this)" tabindex="-1" title="비밀번호 보기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7.5 11-7.5S23 12 23 12s-4 7.5-11 7.5S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
+      </div></td>
       <td style="padding:2px 4px">
         <div id="tnote-${row.id}"
           contenteditable="true"
@@ -4065,6 +4075,27 @@ function toolNotePaste(e, idx, rowId){
   const el = document.getElementById('tnote-'+rowId);
   toolRows[idx].note = el ? (el.innerText||'') : '';
   fbPush();
+}
+
+// 툴 계정 비번 보기: 팀 공용 비밀번호 확인 후 (창고가 잠겨 있어 방문객에겐 툴 데이터 자체가 안 감)
+let _toolPwVerified = false;
+async function togglePw(id, btn){
+  const inp = document.getElementById(id);
+  if(!inp) return;
+  if(inp.type === 'password'){
+    if(!_toolPwVerified){
+      const entered = prompt('팀 공용 비밀번호를 입력하세요:');
+      if(!entered) return;
+      if(/[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(entered)){ showToast('한글로 입력됐어요 — 한/영 키를 확인하세요','error'); return; }
+      if(!(await cdcdVerify('team', entered))){ showToast('비밀번호가 틀렸어요','error'); return; }
+      _toolPwVerified = true;
+    }
+    inp.type = 'text';
+    btn.style.opacity = '1';
+  } else {
+    inp.type = 'password';
+    btn.style.opacity = '.5';
+  }
 }
 
 function toolNoteInput(idx, rowId, el){
