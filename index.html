@@ -804,7 +804,7 @@ td.cell.leave{border-right-color:transparent}
 
   <div class="page-header" style="flex-direction:column;align-items:flex-start;gap:4px;padding:8px 14px">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;width:100%;overflow:hidden">
-      <div class="nav-logo" style="flex-shrink:0"><b>NHN</b><span> marketing design</span><span style="font-size:11px;opacity:.45;margin-left:6px;font-weight:400">v1112-6</span></div>
+      <div class="nav-logo" style="flex-shrink:0"><b>NHN</b><span> marketing design</span><span style="font-size:11px;opacity:.45;margin-left:6px;font-weight:400">v1112-7</span></div>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;width:100%" id="schedule-btn-row">
       <div class="mnav">
@@ -1233,7 +1233,8 @@ td.cell.leave{border-right-color:transparent}
       <div style="font-size:15px;color:var(--tx2);margin-bottom:12px">팀 공용 비밀번호를 입력해주세요</div>
       <input type="password" id="login-pw-input" placeholder="비밀번호"
         style="width:100%;border:1px solid var(--bd2);border-radius:8px;padding:9px 12px;font-size:15px;outline:none;box-sizing:border-box"
-        onkeydown="if(event.key==='Enter')submitLogin()">
+        oninput="koHint(this,'login-ko-hint')" onkeydown="if(event.key==='Enter')submitLogin()">
+      <div id="login-ko-hint" style="color:#e53e3e;font-size:13px;margin-top:6px;display:none">한글로 입력되고 있어요 — 한/영 키를 확인하세요</div>
       <div id="login-pw-err" style="color:#e53e3e;font-size:15px;margin-top:6px;display:none">비밀번호가 틀렸어요</div>
       <div style="display:flex;gap:8px;margin-top:16px">
         <button class="btn" style="flex:1" onclick="closeLoginModal()">취소</button>
@@ -1254,7 +1255,8 @@ td.cell.leave{border-right-color:transparent}
       <div style="font-size:15px;color:var(--tx2);margin-bottom:12px">비밀번호를 입력해주세요</div>
       <input type="password" id="admin-pw-input" placeholder="비밀번호"
         style="width:100%;border:1px solid var(--bd2);border-radius:8px;padding:9px 12px;font-size:15px;outline:none;box-sizing:border-box"
-        onkeydown="if(event.key==='Enter')submitAdminPw()">
+        oninput="koHint(this,'admin-ko-hint')" onkeydown="if(event.key==='Enter')submitAdminPw()">
+      <div id="admin-ko-hint" style="color:#e53e3e;font-size:13px;margin-top:6px;display:none">한글로 입력되고 있어요 — 한/영 키를 확인하세요</div>
       <div id="admin-pw-err" style="color:#e53e3e;font-size:15px;margin-top:6px;display:none">비밀번호가 틀렸어요</div>
       <div style="display:flex;gap:8px;margin-top:16px">
         <button class="btn" style="flex:1" onclick="closeAdminModal()">취소</button>
@@ -2508,12 +2510,20 @@ function toggleLogin(){
   if(_auth){ if(confirm('로그아웃할까요?')){ localStorage.removeItem('cd_member'); location.reload(); } return; }
   document.getElementById('login-pw-input').value='';
   document.getElementById('login-pw-err').style.display='none';
+  document.getElementById('login-ko-hint').style.display='none';
   document.getElementById('login-modal').classList.add('open');
   setTimeout(()=>document.getElementById('login-pw-input').focus(),100);
 }
+// 비밀번호 칸에 한글이 섞이면 한/영 안내 (true = 한글 있음)
+function koHint(inp, hintId){
+  const ko = /[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(inp.value);
+  const h = document.getElementById(hintId); if(h) h.style.display = ko ? '' : 'none';
+  return ko;
+}
 function closeLoginModal(){ document.getElementById('login-modal').classList.remove('open'); }
 async function submitLogin(){
-  const pw = document.getElementById('login-pw-input').value;
+  const inp = document.getElementById('login-pw-input'), pw = inp.value;
+  if(koHint(inp,'login-ko-hint')) return; // 한글 섞임 = 한/영 실수 (비번에 한글은 못 넣게 해 둠)
   if(!(await loadFull({k:'team', pw}))){ document.getElementById('login-pw-err').style.display=''; return; }
   localStorage.setItem('cd_member', JSON.stringify({pw}));
   closeLoginModal();
@@ -2532,13 +2542,15 @@ function toggleAdmin(){
   } else {
     document.getElementById('admin-pw-input').value='';
     document.getElementById('admin-pw-err').style.display='none';
+    document.getElementById('admin-ko-hint').style.display='none';
     document.getElementById('admin-modal').classList.add('open');
     setTimeout(()=>document.getElementById('admin-pw-input').focus(),100);
   }
 }
 function closeAdminModal(){ document.getElementById('admin-modal').classList.remove('open'); }
 async function submitAdminPw(){
-  const pw = document.getElementById('admin-pw-input').value;
+  const inp = document.getElementById('admin-pw-input'), pw = inp.value;
+  if(koHint(inp,'admin-ko-hint')) return;
   if(await loadFull({k:'admin', pw})){
     localStorage.setItem('cd_admin', pw);
     closeAdminModal();
