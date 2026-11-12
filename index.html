@@ -804,7 +804,7 @@ td.cell.leave{border-right-color:transparent}
 
   <div class="page-header" style="flex-direction:column;align-items:flex-start;gap:4px;padding:8px 14px">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;width:100%;overflow:hidden">
-      <div class="nav-logo" style="flex-shrink:0"><b>NHN</b><span> marketing design</span><span style="font-size:11px;opacity:.45;margin-left:6px;font-weight:400">v1112-5</span></div>
+      <div class="nav-logo" style="flex-shrink:0"><b>NHN</b><span> marketing design</span><span style="font-size:11px;opacity:.45;margin-left:6px;font-weight:400">v1112-6</span></div>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;width:100%" id="schedule-btn-row">
       <div class="mnav">
@@ -1230,8 +1230,7 @@ td.cell.leave{border-right-color:transparent}
       <button class="modal-close" onclick="closeLoginModal()">✕</button>
     </div>
     <div style="padding:20px">
-      <div style="font-size:15px;color:var(--tx2);margin-bottom:12px">이름을 고르고 팀 공용 비밀번호를 입력해주세요</div>
-      <select id="login-who" style="width:100%;border:1px solid var(--bd2);border-radius:8px;padding:9px 12px;font-size:15px;outline:none;box-sizing:border-box;margin-bottom:8px;background:var(--sur);color:var(--tx)"></select>
+      <div style="font-size:15px;color:var(--tx2);margin-bottom:12px">팀 공용 비밀번호를 입력해주세요</div>
       <input type="password" id="login-pw-input" placeholder="비밀번호"
         style="width:100%;border:1px solid var(--bd2);border-radius:8px;padding:9px 12px;font-size:15px;outline:none;box-sizing:border-box"
         onkeydown="if(event.key==='Enter')submitLogin()">
@@ -2469,11 +2468,11 @@ function saveEditIdea(idx, wrap){
 // 관리자·툴 잠금·팀원 비밀번호는 Supabase cdcd_secrets 테이블에만 암호화 저장 (확인은 cdcd_verify RPC)
 let _isAdmin = false;
 // 데이터 접근: 방문객 = cdcd_public(간트용 일부만, 읽기 전용) / 팀원·관리자 = cdcd_load·cdcd_save (비번 확인)
-let _auth = null; // {k:'admin', pw} | {k:'team', pw, id} — 팀원은 공용 비번 + 고른 이름(id)
+let _auth = null; // {k:'admin'|'team', pw} — 팀원은 공용 비번 하나 (이름은 리뷰 쓸 때만 고름)
 function savedAuths(){
   const a = [];
   const ap = localStorage.getItem('cd_admin'); if(ap) a.push({k:'admin', pw:ap});
-  try{ const m = JSON.parse(localStorage.getItem('cd_member')||'null'); if(m?.id && m?.pw) a.push({k:'team', pw:m.pw, id:m.id}); }catch(e){}
+  try{ const m = JSON.parse(localStorage.getItem('cd_member')||'null'); if(m?.pw) a.push({k:'team', pw:m.pw}); }catch(e){}
   return a;
 }
 async function loadFull(auth){
@@ -2481,7 +2480,6 @@ async function loadFull(auth){
   if(error || !data?.main) return false;
   _auth = auth;
   _isAdmin = auth.k === 'admin';
-  if(!_isAdmin) _rvPersonId = auth.id; // 팀원 로그인 = 리뷰 로그인 (고른 이름으로)
   loadFromSbData(data.main);
   if(data.avatars?.avatarImgs){ avatarImgs = data.avatars.avatarImgs; renderTable(); }
   applyAccessMode();
@@ -2504,11 +2502,10 @@ function applyAccessMode(){
   });
   const lb = document.getElementById('login-btn'), ll = document.getElementById('login-label');
   if(lb) lb.style.display = _isAdmin ? 'none' : '';
-  if(ll) ll.textContent = (_auth && !_isAdmin) ? (getAllPeople().find(p=>p.id===_auth.id)?.name||'팀원')+' ✓' : '로그인';
+  if(ll) ll.textContent = (_auth && !_isAdmin) ? '팀원 ✓' : '로그인';
 }
 function toggleLogin(){
   if(_auth){ if(confirm('로그아웃할까요?')){ localStorage.removeItem('cd_member'); location.reload(); } return; }
-  document.getElementById('login-who').innerHTML = getPeople().map(p=>`<option value="${p.id}">${escH(p.name)}</option>`).join('');
   document.getElementById('login-pw-input').value='';
   document.getElementById('login-pw-err').style.display='none';
   document.getElementById('login-modal').classList.add('open');
@@ -2516,10 +2513,9 @@ function toggleLogin(){
 }
 function closeLoginModal(){ document.getElementById('login-modal').classList.remove('open'); }
 async function submitLogin(){
-  const id = document.getElementById('login-who').value;
   const pw = document.getElementById('login-pw-input').value;
-  if(!(await loadFull({k:'team', pw, id}))){ document.getElementById('login-pw-err').style.display=''; return; }
-  localStorage.setItem('cd_member', JSON.stringify({id, pw}));
+  if(!(await loadFull({k:'team', pw}))){ document.getElementById('login-pw-err').style.display=''; return; }
+  localStorage.setItem('cd_member', JSON.stringify({pw}));
   closeLoginModal();
   showToast('로그인했어요');
 }
@@ -3492,6 +3488,7 @@ function renderReviewYear(){
 let _rvSelectedId = null;
 
 function selectRvPerson(personId){
+  if(_auth){ _rvPersonId = personId; _rvSelectedId = null; showReviewWrite(personId); return; } // 이미 로그인 = 이름만 고르면 바로 작성
   _rvSelectedId = personId;
   const person = getAllPeople().find(p=>p.id===personId);
   document.getElementById('rv-pw-wrap').style.display='';
