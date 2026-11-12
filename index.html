@@ -796,7 +796,7 @@ td.cell.leave{border-right-color:transparent}
 
   <div class="page-header" style="flex-direction:column;align-items:flex-start;gap:4px;padding:8px 14px">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;width:100%;overflow:hidden">
-      <div class="nav-logo" style="flex-shrink:0"><b>NHN</b><span> marketing design</span><span style="font-size:11px;opacity:.45;margin-left:6px;font-weight:400">v1112-2</span></div>
+      <div class="nav-logo" style="flex-shrink:0"><b>NHN</b><span> marketing design</span><span style="font-size:11px;opacity:.45;margin-left:6px;font-weight:400">v1112-3</span></div>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;width:100%" id="schedule-btn-row">
       <div class="mnav">
@@ -806,6 +806,7 @@ td.cell.leave{border-right-color:transparent}
       </div>
       <button id="theme-btn" onclick="toggleTheme()" title="다크모드 전환" style="width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:6px;border:1px solid var(--bd2);background:var(--sur);cursor:pointer;padding:0;color:var(--tx2)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
       <button onclick="openBarOpMod()" title="일정바 진하기 조절" style="width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:6px;border:1px solid var(--bd2);background:var(--sur);cursor:pointer;padding:0;color:var(--tx2)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="7" x2="21" y2="7"/><circle cx="15" cy="7" r="3" fill="#fff"/><line x1="3" y1="17" x2="21" y2="17"/><circle cx="9" cy="17" r="3" fill="#fff"/></svg></button>
+      <button id="login-btn" class="btn btn-g" onclick="toggleLogin()"><span id="login-label">로그인</span></button>
       <button id="admin-btn" class="btn btn-g" onclick="toggleAdmin()" style="display:flex;align-items:center;gap:4px"><span id="admin-label">관리자</span></button>
       <button class="btn btn-g" onclick="openProjMgr()">프로젝트</button>
       <button class="btn btn-g" onclick="openTeamMgr()">팀원</button>
@@ -1209,6 +1210,28 @@ td.cell.leave{border-right-color:transparent}
       <button class="btn" style="flex:1" onclick="closeDmModal()">취소</button>
       <button class="btn btn-danger" id="dm-del-btn" onclick="deleteDateMemo()" style="display:none">삭제</button>
       <button class="btn btn-p" style="flex:1" onclick="saveDateMemo()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- Member Login Modal (로그인해야 간트 외 탭·저장 가능) -->
+<div class="mb" id="login-modal">
+  <div class="modal" style="max-width:320px">
+    <div class="modal-header">
+      <div class="modal-title">팀원 로그인</div>
+      <button class="modal-close" onclick="closeLoginModal()">✕</button>
+    </div>
+    <div style="padding:20px">
+      <div style="font-size:15px;color:var(--tx2);margin-bottom:12px">이름을 고르고 비밀번호를 입력해주세요</div>
+      <select id="login-who" style="width:100%;border:1px solid var(--bd2);border-radius:8px;padding:9px 12px;font-size:15px;outline:none;box-sizing:border-box;margin-bottom:8px;background:var(--sur);color:var(--tx)"></select>
+      <input type="password" id="login-pw-input" placeholder="비밀번호"
+        style="width:100%;border:1px solid var(--bd2);border-radius:8px;padding:9px 12px;font-size:15px;outline:none;box-sizing:border-box"
+        onkeydown="if(event.key==='Enter')submitLogin()">
+      <div id="login-pw-err" style="color:#e53e3e;font-size:15px;margin-top:6px;display:none">비밀번호가 틀렸어요</div>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button class="btn" style="flex:1" onclick="closeLoginModal()">취소</button>
+        <button class="btn btn-p" style="flex:1" onclick="submitLogin()">확인</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1797,9 +1820,11 @@ function removeAvatar(mid){
   showToast('사진 삭제됨');
 }
 async function pushAvatarsToSb(){
-  if(!_sb) return;
-  try{ await _sb.from(SB_TABLE).upsert({ id: 2, payload: { avatarImgs, _updated: Date.now() } }); }
-  catch(e){ console.error('avatar push', e); showToast('사진 저장 실패','error'); }
+  if(!_sb || !_auth) return;
+  const t = Date.now();
+  const { data: ok, error } = await _sb.rpc('cdcd_save', { p_k:_auth.k, p_pw:_auth.pw, p_id:2, p_payload:{ avatarImgs, _updated:t } });
+  if(error || ok !== true){ console.error('avatar push', error); showToast('사진 저장 실패','error'); return; }
+  _sbChannel?.send({ type:'broadcast', event:'saved', payload:{ t } });
 }
 
 const LEAVE_TYPES = {
@@ -2434,7 +2459,58 @@ function saveEditIdea(idx, wrap){
 //  ADMIN AUTH
 // ════════════════════════════════════════════
 // 관리자·툴 잠금·팀원 비밀번호는 Supabase cdcd_secrets 테이블에만 암호화 저장 (확인은 cdcd_verify RPC)
-let _isAdmin = false; // 저장된 관리자 비번(cd_admin)은 initSupabase에서 cdcd_verify로 재확인
+let _isAdmin = false;
+// 데이터 접근: 방문객 = cdcd_public(간트용 일부만, 읽기 전용) / 팀원·관리자 = cdcd_load·cdcd_save (비번 확인)
+let _auth = null; // {k:'admin'|'member:<id>', pw}
+function savedAuths(){
+  const a = [];
+  const ap = localStorage.getItem('cd_admin'); if(ap) a.push({k:'admin', pw:ap});
+  try{ const m = JSON.parse(localStorage.getItem('cd_member')||'null'); if(m?.id && m?.pw) a.push({k:'member:'+m.id, pw:m.pw}); }catch(e){}
+  return a;
+}
+async function loadFull(auth){
+  const { data, error } = await _sb.rpc('cdcd_load', { p_k: auth.k, p_pw: auth.pw });
+  if(error || !data?.main) return false;
+  _auth = auth;
+  _isAdmin = auth.k === 'admin';
+  if(!_isAdmin) _rvPersonId = auth.k.slice(7); // 팀원 로그인 = 리뷰 로그인
+  loadFromSbData(data.main);
+  if(data.avatars?.avatarImgs){ avatarImgs = data.avatars.avatarImgs; renderTable(); }
+  applyAccessMode();
+  return true;
+}
+async function reloadData(){
+  if(_auth && await loadFull(_auth)) return;
+  _auth = null;
+  const { data } = await _sb.rpc('cdcd_public');
+  if(data) loadFromSbData(data);
+  applyAccessMode();
+}
+function applyAccessMode(){
+  const pub = !_auth;
+  [1,2,3,4,5].forEach(i=>{ const t=document.getElementById('stab-'+i); if(t) t.style.display = pub?'none':''; });
+  if(pub && curSubTab!==0) switchSubTab(0);
+  const lb = document.getElementById('login-btn'), ll = document.getElementById('login-label');
+  if(lb) lb.style.display = _isAdmin ? 'none' : '';
+  if(ll) ll.textContent = (_auth && !_isAdmin) ? (getAllPeople().find(p=>'member:'+p.id===_auth.k)?.name||'팀원')+' ✓' : '로그인';
+}
+function toggleLogin(){
+  if(_auth){ if(confirm('로그아웃할까요?')){ localStorage.removeItem('cd_member'); location.reload(); } return; }
+  document.getElementById('login-who').innerHTML = getPeople().map(p=>`<option value="${p.id}">${escH(p.name)}</option>`).join('');
+  document.getElementById('login-pw-input').value='';
+  document.getElementById('login-pw-err').style.display='none';
+  document.getElementById('login-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('login-pw-input').focus(),100);
+}
+function closeLoginModal(){ document.getElementById('login-modal').classList.remove('open'); }
+async function submitLogin(){
+  const id = document.getElementById('login-who').value;
+  const pw = document.getElementById('login-pw-input').value;
+  if(!(await loadFull({k:'member:'+id, pw}))){ document.getElementById('login-pw-err').style.display=''; return; }
+  localStorage.setItem('cd_member', JSON.stringify({id, pw}));
+  closeLoginModal();
+  showToast('로그인했어요');
+}
 async function cdcdVerify(k, pw){
   if(!_sb || !pw) return false;
   const { data, error } = await _sb.rpc('cdcd_verify', { p_k: k, p_pw: pw });
@@ -2450,10 +2526,8 @@ async function setMemberPw(mid, inp){
 
 function toggleAdmin(){
   if(_isAdmin){
-    _isAdmin = false;
     localStorage.removeItem('cd_admin');
-    applyAdminMode();
-    showToast('관리자 모드 해제');
+    location.reload(); // 팀원 로그인이 남아 있으면 팀원으로, 없으면 방문객으로 다시 불러옴
   } else {
     document.getElementById('admin-pw-input').value='';
     document.getElementById('admin-pw-err').style.display='none';
@@ -2464,8 +2538,7 @@ function toggleAdmin(){
 function closeAdminModal(){ document.getElementById('admin-modal').classList.remove('open'); }
 async function submitAdminPw(){
   const pw = document.getElementById('admin-pw-input').value;
-  if(await cdcdVerify('admin', pw)){
-    _isAdmin = true;
+  if(await loadFull({k:'admin', pw})){
     localStorage.setItem('cd_admin', pw);
     closeAdminModal();
     applyAdminMode();
@@ -6882,49 +6955,18 @@ async function initSupabase(){
     _sb = window.supabase.createClient(SB_URL, SB_KEY);
     setFbIndicator('connecting');
 
-    const { data, error } = await _sb.from(SB_TABLE).select('*').eq('id', SB_ROW_ID).single();
-
-    if(error && error.code === '42P01'){
-      showToast('Supabase 테이블 생성이 필요해요. 아래 안내를 확인하세요.', 'error');
-      openFbSetup();
-      return;
+    // 저장된 로그인(관리자 → 팀원 순)으로 전체 데이터, 틀리면(비번 변경 등) 지우고 방문객용 간트 데이터만
+    for(const a of savedAuths()){
+      if(await loadFull(a)) break;
+      localStorage.removeItem(a.k==='admin' ? 'cd_admin' : 'cd_member');
     }
+    if(!_auth) await reloadData();
+    showToast(_auth ? 'Supabase 연결 완료! 팀 데이터를 불러왔어요.' : '일정표 보기 모드 — 수정하려면 로그인하세요');
 
-    if(error || !data){
-      await pushAllToSb();
-      showToast('Supabase 연결 완료! 데이터를 업로드했어요.');
-    } else {
-      loadFromSbData(data.payload);
-      showToast('Supabase 연결 완료! 팀 데이터를 불러왔어요.');
-    }
-    if(await cdcdVerify('admin', localStorage.getItem('cd_admin'))){ _isAdmin = true; applyAdminMode(); renderTable(); }
-
-    // 아바타 사진은 id:2 행에서 별도 로드 (메인 payload 비대 방지)
-    try{
-      const { data: avData } = await _sb.from(SB_TABLE).select('payload').eq('id', 2).single();
-      if(avData?.payload?.avatarImgs){ avatarImgs = avData.payload.avatarImgs; renderTable(); }
-    }catch(e){ /* 행 없으면 무시 (첫 사진 등록 시 생성됨) */ }
-
+    // 실시간: 테이블은 잠겨 있어 변경 알림만 주고받고(broadcast), 받으면 각자 권한대로 다시 불러옴
     _sbChannel = _sb.channel(SB_CHANNEL)
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: SB_TABLE,
-        filter: `id=eq.${SB_ROW_ID}`
-      }, (payload) => {
-        if(!payload.new?.payload) return;
-        const incoming = payload.new.payload;
-        const incomingTime = incoming._updated || 0;
-        // 내가 방금 push한 데이터면 → 저장 확인됨, 로컬 반영
-        if(_pendingPushId && incomingTime === _lastPushTime){
-          _pendingPushId = null;
-          setFbIndicator('on');
-          return; // 이미 로컬에 반영됐으니 loadFromSbData 불필요
-        }
-        // 다른 사람이 저장한 더 최신 데이터면 반영
-        if(incomingTime > _lastPushTime){
-          loadFromSbData(incoming);
-        }
+      .on('broadcast', { event: 'saved' }, ({ payload }) => {
+        if((payload?.t || 0) > _lastPushTime) reloadData();
       })
       .subscribe((status) => {
         if(status === 'SUBSCRIBED'){
@@ -7003,7 +7045,7 @@ function loadFromSbData(payload){
 }
 
 async function pushAllToSb(){
-  if(!_sb) return;
+  if(!_sb || !_auth) return; // 방문객(간트 일부만 로드된 상태)은 절대 저장하지 않음
   _lastPushTime = Date.now();
   _pendingPushId = _lastPushTime;
   const payload = {
@@ -7015,20 +7057,16 @@ async function pushAllToSb(){
     _updated: _lastPushTime
   };
   try{
-    const { error } = await _sb.from(SB_TABLE).upsert({ id: SB_ROW_ID, payload });
+    const { data: ok, error } = await _sb.rpc('cdcd_save', { p_k:_auth.k, p_pw:_auth.pw, p_id:SB_ROW_ID, p_payload:payload });
     if(error) throw error;
+    if(ok !== true){ // 비번이 바뀐 경우 등 — 재시도해도 안 되니 다시 로그인 유도
+      showToast('저장 권한이 없어요. 다시 로그인해 주세요.', 'error');
+      setFbIndicator('off');
+      return;
+    }
+    _pendingPushId = null;
     setFbIndicator('on');
-    // 3초 후에도 realtime 확인이 없으면 직접 DB에서 읽어서 확인
-    setTimeout(async ()=>{
-      if(_pendingPushId !== _lastPushTime) return; // 이미 확인됨
-      const { data } = await _sb.from(SB_TABLE).select('payload').eq('id', SB_ROW_ID).single();
-      if(data?.payload?._updated === _lastPushTime){
-        _pendingPushId = null;
-      } else {
-        // DB에 다른 사람 데이터가 최신이면 반영
-        if(data?.payload?._updated > _lastPushTime) loadFromSbData(data.payload);
-      }
-    }, 3000);
+    _sbChannel?.send({ type:'broadcast', event:'saved', payload:{ t:_lastPushTime } });
   } catch(e){
     console.error('SB write error', e);
     setFbIndicator('off');
@@ -7038,7 +7076,7 @@ async function pushAllToSb(){
 }
 
 function fbPush(){
-  if(!_sbConnected) return;
+  if(!_sbConnected || !_auth) return;
   clearTimeout(_sbPushTimer);
   _sbPushTimer = setTimeout(pushAllToSb, 600);
 }
