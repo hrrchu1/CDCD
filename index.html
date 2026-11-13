@@ -812,7 +812,7 @@ td.cell.leave{border-right-color:transparent}
 
   <div class="page-header" style="flex-direction:column;align-items:flex-start;gap:4px;padding:8px 14px">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;width:100%;overflow:hidden">
-      <div class="nav-logo" style="flex-shrink:0"><b>NHN</b><span> marketing design</span><span style="font-size:11px;opacity:.45;margin-left:6px;font-weight:400">v1112-11</span></div>
+      <div class="nav-logo" style="flex-shrink:0"><b>NHN</b><span> marketing design</span><span style="font-size:11px;opacity:.45;margin-left:6px;font-weight:400">v1112-12</span></div>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;width:100%" id="schedule-btn-row">
       <div class="mnav">
@@ -1358,6 +1358,7 @@ td.cell.leave{border-right-color:transparent}
       </div>
       <button class="btn btn-p" onclick="saveComment()">저장 <span style="opacity:.5;font-size:13px">4</span></button>
       <button class="btn btn-g" onclick="closeCmod()">취소 <span style="opacity:.5;font-size:13px">esc</span></button>
+      <button class="btn" id="cm-dup" onclick="dupRange()" title="이 일정을 그대로 복사해 다른 담당자에게 배정">복제</button>
       <button class="btn btn-danger" id="cm-del" onclick="deleteRange()">삭제 <span style="opacity:.5;font-size:13px">5</span></button>
     </div>
   </div>
@@ -5341,6 +5342,7 @@ function emptyCellClick(e,taskId,dateStr){
   cmSetContent('cm-link','');
   setCmStatus('wip');
   document.getElementById('cm-del').style.display='none';
+  document.getElementById('cm-dup').style.display='none';
   renderPsel(null);
   pending={taskId, start:dateStr, end:dateStr, editIdx:null, isNew:false};
   document.getElementById('cmod').classList.add('open');
@@ -5619,6 +5621,7 @@ function openScheduleAdd(){ if(!_isAdmin){showToast('관리자만 사용할 수 
   _cmDueManual=false; _cmDueMode=null; applyCmDueMode(); syncCmDue();
   const _rcNew=document.getElementById('cm-received'); if(_rcNew) _rcNew.value='';
   document.getElementById('cm-del').style.display = 'none';
+  document.getElementById('cm-dup').style.display = 'none';
   renderPsel(null);
   // 작업항목 초기화
   // 작업항목 제거됨
@@ -5677,6 +5680,7 @@ function openModal(taskId,start,end,editIdx){
   const _rcEl=document.getElementById('cm-received');
   if(_rcEl){ _rcEl.value = r?.received || ''; _rcEl.disabled = readOnly; }
   document.getElementById('cm-del').style.display=editIdx!=null?'':'none';
+  document.getElementById('cm-dup').style.display=(_isAdmin&&editIdx!=null)?'':'none';
   renderPsel(r?.projectId||null);
   // 마일스톤 렌더링 (기존 일정의 시작일 기준)
   renderCmMsGrid(taskId, start);
@@ -5869,6 +5873,18 @@ function saveComment(){
   addLog(editIdx!=null?'수정':'등록', person?.name, proj?.name, start, end);
 
   closeCmod();renderTable();renderStats();fbPush();
+}
+// 복제: 창에 있는 내용(기간·프로젝트·메모·마감·마일스톤) 그대로 신규 등록 모드로 전환 → 담당자 고르고 저장
+function dupRange(){
+  if(!_isAdmin||!pending||pending.editIdx==null) return;
+  renderPersonCheckboxes(getPeople(), []);
+  document.getElementById('cm-person-row').style.display='';
+  document.getElementById('cm-title').textContent='일정 복제';
+  document.getElementById('cm-sub').textContent='배정할 담당자를 선택해주세요';
+  document.getElementById('cm-del').style.display='none';
+  document.getElementById('cm-dup').style.display='none';
+  pending={taskId:null, start:null, end:null, editIdx:null, isNew:true};
+  showToast('복제할 담당자를 선택하고 저장하세요');
 }
 function deleteRange(){
   if(!pending||pending.editIdx==null)return;
