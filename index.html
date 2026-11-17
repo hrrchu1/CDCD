@@ -812,7 +812,7 @@ td.cell.leave{border-right-color:transparent}
 
   <div class="page-header" style="flex-direction:column;align-items:flex-start;gap:4px;padding:8px 14px">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;width:100%;overflow:hidden">
-      <div class="nav-logo" style="flex-shrink:0"><b>NHN</b><span> marketing design</span><span style="font-size:11px;opacity:.45;margin-left:6px;font-weight:400">v1112-12</span></div>
+      <div class="nav-logo" style="flex-shrink:0"><b>NHN</b><span> marketing design</span><span style="font-size:11px;opacity:.45;margin-left:6px;font-weight:400">v1117-1</span></div>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;width:100%" id="schedule-btn-row">
       <div class="mnav">
@@ -7113,8 +7113,13 @@ function loadFromSbData(payload){
   setTimeout(scrollToToday, 600);
 }
 
+// 저장은 한 번에 하나만, 실패하면 2→4→8…최대 60초 간격으로 재시도 (DB 가 느릴 때 탭마다 2초씩 몰아치면 더 느려짐, 11-17)
+let _saving = false, _saveAgain = false, _saveFails = 0;
 async function pushAllToSb(){
   if(!_sb || !_auth) return; // 방문객(간트 일부만 로드된 상태)은 절대 저장하지 않음
+  if(_saving){ _saveAgain = true; return; } // 저장 중이면 끝난 뒤 한 번 더
+  _saving = true;
+  try{ // 내용 묶다 오류가 나도 finally 에서 _saving 풀림
   _lastPushTime = Date.now();
   _pendingPushId = _lastPushTime;
   const payload = {
@@ -7125,9 +7130,9 @@ async function pushAllToSb(){
     dateMemos, grmAdj,
     _updated: _lastPushTime
   };
-  try{
     const { data: ok, error } = await _sb.rpc('cdcd_save', { p_k:_auth.k, p_pw:_auth.pw, p_id:SB_ROW_ID, p_payload:payload });
     if(error) throw error;
+    const wasFailing = _saveFails; _saveFails = 0;
     if(ok !== true){ // 비번이 바뀐 경우 등 — 재시도해도 안 되니 다시 로그인 유도
       showToast('저장 권한이 없어요. 다시 로그인해 주세요.', 'error');
       setFbIndicator('off');
@@ -7135,17 +7140,23 @@ async function pushAllToSb(){
     }
     _pendingPushId = null;
     setFbIndicator('on');
+    if(wasFailing) showToast('저장됐어요');
     _sbChannel?.send({ type:'broadcast', event:'saved', payload:{ t:_lastPushTime } });
   } catch(e){
     console.error('SB write error', e);
     setFbIndicator('off');
-    showToast('저장 실패. 재시도 중...', 'error');
-    setTimeout(pushAllToSb, 2000); // 실패 시 2초 후 재시도
+    if(++_saveFails === 1) showToast('저장 실패. 재시도 중...', 'error'); // 알림은 처음 한 번만, 그 뒤는 「오프라인」 표시로
+    clearTimeout(_sbPushTimer);
+    _sbPushTimer = setTimeout(pushAllToSb, Math.min(60000, 2000 * 2 ** (_saveFails - 1)));
+  } finally {
+    _saving = false;
+    if(_saveAgain){ _saveAgain = false; if(!_saveFails) fbPush(); } // 실패 중이면 예약된 재시도가 최신 내용을 실어 감
   }
 }
 
 function fbPush(){
   if(!_sbConnected || !_auth) return;
+  if(_saveFails) return; // 재시도 예약돼 있음 — 그때 화면의 최신 내용을 통째로 저장
   clearTimeout(_sbPushTimer);
   _sbPushTimer = setTimeout(pushAllToSb, 600);
 }
