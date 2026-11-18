@@ -812,7 +812,7 @@ td.cell.leave{border-right-color:transparent}
 
   <div class="page-header" style="flex-direction:column;align-items:flex-start;gap:4px;padding:8px 14px">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;width:100%;overflow:hidden">
-      <div class="nav-logo" style="flex-shrink:0"><b>NHN</b><span> marketing design</span><span style="font-size:11px;opacity:.45;margin-left:6px;font-weight:400">v1118-1</span></div>
+      <div class="nav-logo" style="flex-shrink:0"><b>NHN</b><span> marketing design</span><span style="font-size:11px;opacity:.45;margin-left:6px;font-weight:400">v1118-2</span></div>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;width:100%" id="schedule-btn-row">
       <div class="mnav">
@@ -1359,22 +1359,23 @@ td.cell.leave{border-right-color:transparent}
       <button class="btn btn-p" onclick="saveComment()">저장 <span style="opacity:.5;font-size:13px">4</span></button>
       <button class="btn btn-g" onclick="closeCmod()">취소 <span style="opacity:.5;font-size:13px">esc</span></button>
       <button class="btn" id="cm-dup" onclick="dupRange()" title="이 일정을 그대로 복사해 다른 담당자에게 배정">복제</button>
-      <button class="btn" id="cm-push" onclick="openPushMod()" title="이 일정과 그 뒤 일정을 한꺼번에 뒤로 밀기">뒤로 밀기</button>
+      <button class="btn" id="cm-push" onclick="openPushMod()" title="이 일정과 그 뒤 일정을 한꺼번에 뒤로 밀기·앞으로 당기기">밀기·당기기</button>
       <button class="btn btn-danger" id="cm-del" onclick="deleteRange()">삭제 <span style="opacity:.5;font-size:13px">5</span></button>
     </div>
   </div>
 </div>
 
-<!-- 일정 뒤로 밀기 Modal -->
+<!-- 일정 밀기·당기기 Modal -->
 <div class="mb" id="pushmod">
   <div class="modal" style="width:360px">
-    <div class="mt">일정 뒤로 밀기</div>
+    <div class="mt">일정 밀기·당기기</div>
     <div class="mss" id="push-sub"></div>
     <div class="fg"><label>이 날짜부터</label><input type="date" id="push-from" oninput="pushPreview()"></div>
-    <div class="fg"><label>며칠 밀까요 <span style="font-size:13px;color:var(--tx3)">(근무일 · 주말·공휴일 건너뜀)</span></label><input type="number" id="push-n" min="1" max="60" value="1" oninput="pushPreview()"></div>
+    <div class="fg"><label>며칠 옮길까요 <span style="font-size:13px;color:var(--tx3)">(근무일 · 주말·공휴일 건너뜀)</span></label><input type="number" id="push-n" min="1" max="60" value="1" oninput="pushPreview()"></div>
     <div id="push-info" style="font-size:15px;color:var(--tx2)"></div>
     <div class="ma">
-      <button class="btn btn-p" onclick="doPush()">밀기</button>
+      <button class="btn btn-p" onclick="doPush(1)">뒤로 밀기</button>
+      <button class="btn" onclick="doPush(-1)">앞으로 당기기</button>
       <button class="btn btn-g" onclick="document.getElementById('pushmod').classList.remove('open')">취소</button>
     </div>
   </div>
@@ -5905,12 +5906,12 @@ function dupRange(){
   pending={taskId:null, start:null, end:null, editIdx:null, isNew:true};
   showToast('복제할 담당자를 선택하고 저장하세요');
 }
-// 뒤로 밀기: 이 담당자의 기준일 이후 날짜(일정 시작·끝·자동 마감, 마일스톤)를 N근무일씩 뒤로.
-// 기준일 전에 시작한 일정은 시작은 그대로, 끝만 늘어남. 휴가는 안 움직임.
+// 밀기·당기기: 이 담당자의 기준일 이후 날짜(일정 시작·끝·자동 마감, 마일스톤)를 N근무일씩 뒤로(+)/앞으로(-).
+// 기준일 전에 시작한 일정은 시작은 그대로, 끝만 늘거나 줄어듦(시작보다 앞으로는 안 감). 휴가는 안 움직임.
 let _pushTid=null;
 function addWorkDaysH(ds,n){
-  const d=new Date(ds+'T00:00:00'); let rem=n;
-  while(rem>0){ d.setDate(d.getDate()+1); const dow=d.getDay(); if(dow&&dow!==6&&!getHoliday(dstr(d.getFullYear(),d.getMonth(),d.getDate()))) rem--; }
+  const d=new Date(ds+'T00:00:00'), s=n<0?-1:1; let rem=Math.abs(n);
+  while(rem>0){ d.setDate(d.getDate()+s); const dow=d.getDay(); if(dow&&dow!==6&&!getHoliday(dstr(d.getFullYear(),d.getMonth(),d.getDate()))) rem--; }
   return dstr(d.getFullYear(),d.getMonth(),d.getDate());
 }
 function openPushMod(){
@@ -5918,7 +5919,7 @@ function openPushMod(){
   const r=ranges[pending.taskId]?.[pending.editIdx]; if(!r) return;
   _pushTid=pending.taskId;
   const pn=getAllPeople().find(p=>p.id===tasks.find(t=>t.id===_pushTid)?.personId)?.name||'';
-  document.getElementById('push-sub').textContent=`${pn} · 이 날짜 뒤 일정이 전부 같이 밀려요`;
+  document.getElementById('push-sub').textContent=`${pn} · 이 날짜 뒤 일정이 전부 같이 움직여요`;
   const td=todayStr();
   document.getElementById('push-from').value = dn(r.start)<dn(td)&&dn(r.end)>=dn(td) ? td : r.start; // 진행 중이면 오늘부터(시작일은 그대로, 끝만 늘어남)
   document.getElementById('push-n').value=1;
@@ -5930,28 +5931,30 @@ function pushPreview(){
   const from=document.getElementById('push-from').value;
   const n=from?(ranges[_pushTid]||[]).filter(r=>dn(r.end)>=dn(from)).length:0;
   const m=from?Object.keys(milestones[_pushTid]||{}).filter(ds=>dn(ds)>=dn(from)).length:0;
-  document.getElementById('push-info').textContent = n ? `일정 ${n}개${m?` · 마일스톤 ${m}개`:''}가 밀려요` : '이 날짜 뒤엔 일정이 없어요';
+  document.getElementById('push-info').textContent = n ? `일정 ${n}개${m?` · 마일스톤 ${m}개`:''}가 움직여요` : '이 날짜 뒤엔 일정이 없어요';
 }
-function doPush(){
+function doPush(dir){
   const from=document.getElementById('push-from').value;
   const n=parseInt(document.getElementById('push-n').value,10);
   if(!from||!(n>0)){ showToast('날짜와 일수를 확인해주세요','error'); return; }
-  const mv=ds=>dn(ds)>=dn(from)?addWorkDaysH(ds,n):ds;
+  const mv=ds=>dn(ds)>=dn(from)?addWorkDaysH(ds,n*dir):ds;
   const list=(ranges[_pushTid]||[]).filter(r=>dn(r.end)>=dn(from));
   if(!list.length){ showToast('이 날짜 뒤엔 일정이 없어요','error'); return; }
   list.forEach(r=>{
     const autoDue=r.due===r.end; // 기간 끝을 따라가던 마감만 같이 이동 (직접 정한 날짜·미정·ASAP 은 그대로)
     r.start=mv(r.start); r.end=mv(r.end);
+    if(dn(r.end)<dn(r.start)) r.end=r.start; // 당기다 끝이 시작보다 앞서면 하루짜리로
     if(autoDue) r.due=r.end;
   });
   const ms=milestones[_pushTid]||{}, moved={};
   Object.keys(ms).forEach(ds=>{ if(dn(ds)>=dn(from)){ const t=mv(ds); moved[t]={...moved[t],...ms[ds]}; delete ms[ds]; } });
-  Object.assign(ms,moved);
+  Object.entries(moved).forEach(([t,v])=>{ ms[t]={...ms[t],...v}; }); // 당겨서 기준일 앞 마일스톤과 겹치면 합침
   const pn=getAllPeople().find(p=>p.id===tasks.find(t=>t.id===_pushTid)?.personId)?.name;
-  addLog(`뒤로밀기 +${n}일`, pn, `${list.length}개`, from, '');
+  const word=dir>0?'뒤로 밀었어요':'앞으로 당겼어요';
+  addLog(dir>0?`뒤로밀기 +${n}일`:`앞으로당기기 -${n}일`, pn, `${list.length}개`, from, '');
   document.getElementById('pushmod').classList.remove('open');
   renderTable();renderStats();fbPush();
-  showToast(`일정 ${list.length}개를 ${n}근무일 뒤로 밀었어요`);
+  showToast(`일정 ${list.length}개를 ${n}근무일 ${word}`);
 }
 function deleteRange(){
   if(!pending||pending.editIdx==null)return;
