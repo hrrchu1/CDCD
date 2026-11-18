@@ -181,6 +181,11 @@ th.cd.holiday{position:relative}
 td.cell.holiday-cell{background:#fbfbfb}
 td.cell.holiday-cell.empty{cursor:not-allowed!important}
 td.cell.holiday-cell div:has(>.bf){filter:opacity(.35)} /* 연휴 칸 바 흐리게 — 인라인 opacity/brightness와 곱해짐 */
+/* 주말 펼침 칸: 바는 흐리게 하지 않음 (주말 일정 확인이 목적) */
+th.cd.wknd .dn,th.cd.wknd .dl{color:#9a9a9a}
+td.cell.wknd{background:#fbfbfb}
+#wknd-btn.on{background:var(--acc)!important;color:var(--sur)!important;border-color:var(--acc)!important} /* id 라서 다크 헤더 버튼 !important 규칙보다 우선 */
+:root[data-theme="dark"] td.cell.wknd{background:#1a1a1a}
 tbody tr{border-bottom:1px solid var(--bd)}
 tbody tr:last-child{border-bottom:none}
 tbody tr:hover{background:var(--sf2)}
@@ -812,7 +817,7 @@ td.cell.leave{border-right-color:transparent}
 
   <div class="page-header" style="flex-direction:column;align-items:flex-start;gap:4px;padding:8px 14px">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;width:100%;overflow:hidden">
-      <div class="nav-logo" style="flex-shrink:0"><b>NHN</b><span> marketing design</span><span style="font-size:11px;opacity:.45;margin-left:6px;font-weight:400">v1118-2</span></div>
+      <div class="nav-logo" style="flex-shrink:0"><b>NHN</b><span> marketing design</span><span style="font-size:11px;opacity:.45;margin-left:6px;font-weight:400">v1118-4</span></div>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;width:100%" id="schedule-btn-row">
       <div class="mnav">
@@ -828,6 +833,7 @@ td.cell.leave{border-right-color:transparent}
       <button class="btn btn-g" onclick="openTeamMgr()">팀원 관리</button>
       <button class="btn btn-leave" onclick="openLeaveModal(null,null)">휴가</button>
       <button class="btn btn-leave" onclick="openScheduleAdd()">일정</button>
+      <button id="wknd-btn" onclick="toggleWknd()" title="주말 펼쳐 보기 (주말에 걸린 일정 확인)" style="width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:6px;border:1px solid var(--bd2);background:var(--sur);cursor:pointer;padding:0;color:var(--tx2)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/><rect x="13.5" y="13" width="4.5" height="5" rx="1" fill="currentColor" stroke="none"/></svg></button>
       <button class="btn" style="width:34px;height:34px;display:flex;align-items:center;justify-content:center;background:var(--sur);color:#e53e3e;border:1px solid var(--bd2);padding:0;font-size:15px;font-weight:600" onclick="openBulkDelete()" title="일괄 삭제">✕</button>
       <button class="btn btn-g" onclick="openMsMgr()" style="width:34px;height:34px;display:flex;align-items:center;justify-content:center;padding:0;color:var(--tx2)" title="마일스톤 관리"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-6-5-6 5V3z"/></svg></button>
       <div id="fb-indicator" onclick="openFbSetup()" title="Supabase 연결 상태" style="margin-left:auto;display:flex;align-items:center;gap:7px;padding:5px 12px;border-radius:9999px;cursor:pointer;font-size:13px;font-weight:400;background:var(--sf2);color:#707070;border:1px solid #ededed;transition:all .15s;user-select:none;flex-shrink:0">
@@ -2447,7 +2453,7 @@ function getAllWds(){
   const allMonths = [{y:CY,m:CM}, ..._multiMonths].sort((a,b)=>a.y!==b.y?a.y-b.y:a.m-b.m);
   const seen=new Set();
   return allMonths.filter(({y,m})=>{ const k=y+'-'+m; if(seen.has(k))return false; seen.add(k); return true; })
-    .flatMap(({y,m})=>getWeekdays(y,m));
+    .flatMap(({y,m})=>ganttDays(y,m));
 }
 
 
@@ -4750,6 +4756,21 @@ function countWeekdays(a,b){
   for(let d=new Date(s);d<=e;d.setDate(d.getDate()+1)){const dow=d.getDay();if(dow&&dow!==6)c++}
   return c;
 }
+// 주말 펼침(간트 전용, 내 화면만·새로고침하면 꺼짐). 펼친 동안은 간트 칸 = 달력 날짜라 끌어 옮기기 칸 수도 달력 기준
+let _showWknd=false;
+function ganttDays(y,m){
+  if(!_showWknd) return getWeekdays(y,m);
+  const n=new Date(y,m+1,0).getDate(), res=[];
+  for(let d=1;d<=n;d++) res.push({d,ds:dstr(y,m,d),dow:new Date(y,m,d).getDay()});
+  return res;
+}
+function toggleWknd(){
+  _showWknd=!_showWknd;
+  document.getElementById('wknd-btn').classList.toggle('on',_showWknd);
+  renderTable();
+}
+function addCols(ds,delta){ if(!_showWknd) return addWeekdays(ds,delta); const d=new Date(ds); d.setDate(d.getDate()+delta); return d.toISOString().slice(0,10); }
+function countCols(a,b){ return _showWknd ? Math.round((new Date(b)-new Date(a))/864e5)+1 : countWeekdays(a,b); }
 // 기간 내 실근무일 — 주말·공휴일(대체공휴일·임시공휴일 포함)·휴가 제외, 반차/특강은 0.5일
 function countWorkDays(a,b,personId){
   const lvs=leaves[personId]||[], end=new Date(b);
@@ -4925,7 +4946,7 @@ function renderTable(){
   const seenM=new Set();
   const months=allMonths.filter(({y,m})=>{ const k=y+'-'+m; if(seenM.has(k))return false; seenM.add(k); return true; });
   // 전체 날짜 배열
-  const wds=months.flatMap(({y,m})=>getWeekdays(y,m));
+  const wds=months.flatMap(({y,m})=>ganttDays(y,m));
   const td0=todayStr();
   const DAY=['일','월','화','수','목','금','토'];
 
@@ -4941,7 +4962,7 @@ function renderTable(){
     const dmProjs = (typeof dateMemos[ds]==='object'&&dateMemos[ds]?.projs)||[];
     // 직접 지정한 프로젝트만 바로 표시
     const dateProjs = dmProjs.map(pid=>getProj(pid)?.bar).filter(Boolean);
-    h+=`<th class="cd${ds===td0?' today':''}${isHol?' holiday':''}${isCustomHol?' custom-holiday':''}${isWeekStart?' week-start':''}${isMonthStart?' month-start':''}"
+    h+=`<th class="cd${ds===td0?' today':''}${isHol?' holiday':''}${isCustomHol?' custom-holiday':''}${isWeekStart?' week-start':''}${isMonthStart?' month-start':''}${!dow||dow===6?' wknd':''}"
       onclick="openDateMemo('${ds}')"
       onmouseenter="showDateMemoBub(this,'${ds}')"
       onmouseleave="hideDateMemoBub()">
@@ -4982,12 +5003,11 @@ function renderTable(){
       tasks.filter(t=>t.personId===person.id).forEach(task=>{
         const tR=ranges[task.id]||[];
         const laneMap=ganttLanes(tR);
-        // 날짜별 반차·특강+일정 겹침 여부 미리 계산 (옆 셀에서 참조: 확장 중단용)
+        // 날짜별 휴가+일정 겹침 여부 미리 계산 (옆 셀에서 참조: 확장 중단용) — 반차·특강뿐 아니라 종일 휴가도 반칸 (v1118-3)
         const lvHalfArr=wds.map(({ds})=>{
           const n2=dn(ds);
           const lv2=(leaves[person.id]||[]).find(l=>n2>=dn(l.start)&&n2<=dn(l.end));
-          const lt2=lv2?(LEAVE_TYPES[lv2.type]||LEAVE_TYPES.off):null;
-          return !!(lv2&&lt2&&lt2.half&&tR.some(r=>n2>=dn(r.start)&&n2<=dn(r.end)));
+          return !!(lv2&&tR.some(r=>n2>=dn(r.start)&&n2<=dn(r.end)));
         });
         b+=`<tr data-task="${task.id}" data-person="${person.id}" data-group="${group.id}" onmouseenter="rowEnter(this)" onmouseleave="rowLeave(this)" style="${!personHasProj?'opacity:.3':''}">`;
         const isFilteredPerson = _filterPersonId === person.id;
@@ -5010,12 +5030,12 @@ function renderTable(){
           const hasMs=hasMsOnCell(task.id, dateStr);
 
           const _lt=lv?(LEAVE_TYPES[lv.type]||LEAVE_TYPES.off):null;
-          const lvHalfOverlap=!!(lv&&_lt.half&&rs.length>0); // 반차·특강 + 일정 겹침: 일정 바도 같이 표시
+          const lvHalfOverlap=!!(lv&&rs.length>0); // 휴가(종일 포함) + 일정 겹침: 휴가는 반칸, 일정 바도 같이 표시
           if(lv&&!lvHalfOverlap){
             const li=(leaves[person.id]||[]).indexOf(lv);
             const lt=_lt;
             const lvS=n===dn(lv.start),lvE=n===dn(lv.end);
-            b+=`<td class="cell leave${isToday?' today':''}${isHolCell?' holiday-cell':''}${lvS?' lv-s':''}${lvE?' lv-e':''}${lt.half?' lv-half':''}${lt.pm?' lv-half-pm':''}${isWeekStart?' week-start':''}" data-task="${task.id}" data-idx="${idx}" data-ds="${dateStr}"
+            b+=`<td class="cell leave${isToday?' today':''}${isHolCell?' holiday-cell':''}${!dow||dow===6?' wknd':''}${lvS?' lv-s':''}${lvE?' lv-e':''}${lt.half?' lv-half':''}${lt.pm?' lv-half-pm':''}${isWeekStart?' week-start':''}" data-task="${task.id}" data-idx="${idx}" data-ds="${dateStr}"
               draggable="true"
               ondragstart="lvGanttDragStart(event,'${person.id}',${li})"
               ondragover="event.preventDefault()"
@@ -5088,13 +5108,13 @@ function renderTable(){
             let lvOverlay='';
             if(lvHalfOverlap){
               const li=(leaves[person.id]||[]).indexOf(lv);
-              const lvS=n===dn(lv.start);
+              const lvS=n===dn(lv.start), lvE=n===dn(lv.end); // 여러 날 휴가는 처음·끝만 둥글게 해서 이어 보이게
               lvOverlay=`<div class="lvov" onclick="event.stopPropagation();leaveClick(event,'${person.id}',${li})"
-                style="position:absolute;${_lt.pm?'bottom:0;height:calc(50% - 6px)':'top:10px;height:calc(50% - 11px)'};left:2px;right:2px;background:${_lt.bg};color:${_lt.color};border-radius:6px;display:flex;align-items:center;z-index:5;cursor:pointer;overflow:hidden">
+                style="position:absolute;${_lt.pm?'bottom:0;height:calc(50% - 6px)':'top:10px;height:calc(50% - 11px)'};left:${lvS?'2px':'0'};right:${lvE?'2px':'-1px'};background:${_lt.bg};color:${_lt.color};border-radius:${lvS&&lvE?'6px':lvS?'6px 0 0 6px':lvE?'0 6px 6px 0':'0'};display:flex;align-items:center;z-index:5;cursor:pointer;overflow:hidden">
                 ${lvS?`<span class="lv-icon">${_lt.icon}</span><span class="lv-lbl">${_lt.label}</span>`:''}
               </div>`;
             }
-            const cls=`cell bar${isToday?' today':''}${isHolCell?' holiday-cell':''}${isWeekStart?' week-start':''}`;
+            const cls=`cell bar${isToday?' today':''}${isHolCell?' holiday-cell':''}${!dow||dow===6?' wknd':''}${isWeekStart?' week-start':''}`;
             b+=`<td class="${cls}" data-task="${task.id}" data-person="${person.id}" data-ri="${tR.indexOf(rs[0])}" data-idx="${idx}" data-ds="${dateStr}"
               onclick="barTdClick(event,'${task.id}',${tR.indexOf(rs[0])},'${dateStr}')"
 >
@@ -5107,7 +5127,7 @@ function renderTable(){
             </td>`;
           } else {
             // 빈 셀
-            b+=`<td class="cell empty${isToday?' today':''}${isHolCell?' holiday-cell':''}${hasMs?' has-ms':''}${isWeekStart?' week-start':''}" data-task="${task.id}" data-person="${person.id}" data-idx="${idx}" data-ds="${dateStr}"
+            b+=`<td class="cell empty${isToday?' today':''}${isHolCell?' holiday-cell':''}${!dow||dow===6?' wknd':''}${hasMs?' has-ms':''}${isWeekStart?' week-start':''}" data-task="${task.id}" data-person="${person.id}" data-idx="${idx}" data-ds="${dateStr}"
                 onmousedown="createMD(event,'${task.id}',${idx})"
                 onclick="emptyCellClick(event,'${task.id}','${dateStr}')"
                 ondrop="if(_msDrag&&_msDrag.taskId)msDrop(event,'${task.id}','${dateStr}')"
@@ -5184,7 +5204,7 @@ function paintMove(curIdx,crossPid){
   const r=(ranges[taskId]||[])[ri]; if(!r)return;
   const wds=getAllWds();
   const origSI=wds.findIndex(w=>dn(w.ds)>=dn(r.start));
-  const len=countWeekdays(r.start,r.end)-1;
+  const len=countCols(r.start,r.end)-1;
   const delta=curIdx-startIdx;
   const newLo=Math.max(0,Math.min(wds.length-1,origSI+delta));
   const newHi=Math.min(wds.length-1,newLo+len);
@@ -5262,7 +5282,7 @@ function finishMove(){
   const {taskId,ri,startIdx,curIdx,crossPersonId,personId}=iSt;iSt=null;
   const r=(ranges[taskId]||[])[ri];if(!r)return;
   const delta=curIdx-startIdx;
-  const newStart=addWeekdays(r.start,delta),newEnd=addWeekdays(r.end,delta);
+  const newStart=addCols(r.start,delta),newEnd=addCols(r.end,delta);
   const entry={...r,start:newStart,end:newEnd};
   ranges[taskId]=ranges[taskId].filter((_,i)=>i!==ri);
 
@@ -5274,7 +5294,7 @@ function finishMove(){
     const startDn=dn(r.start), endDn=dn(r.end);
     Object.entries(snapshot).forEach(([ds, msData])=>{
       if(dn(ds)<startDn||dn(ds)>endDn) return;
-      const newDs = delta!==0 ? addWeekdays(ds, delta) : ds;
+      const newDs = delta!==0 ? addCols(ds, delta) : ds;
       if(!milestones[tgtTaskId]) milestones[tgtTaskId]={};
       milestones[tgtTaskId][newDs] = msData;
       if(tgtTaskId!==taskId || newDs!==ds) delete milestones[taskId][ds];
@@ -5318,7 +5338,7 @@ function finishResize(){
     // 오른쪽 핸들: start 고정, end를 delta로 계산 (달 경계 넘기)
     const si=wds.findIndex(x=>dn(x.ds)>=dn(r.start));
     const delta=Math.max(curIdx,si)-si;
-    const ne=addWeekdays(r.start, delta);
+    const ne=addCols(r.start, delta);
     ranges[taskId][ri]={...r,end:ne};
   }
   renderTable();renderStats();fbPush();
@@ -6052,11 +6072,11 @@ function lvGanttDrop(e,targetPersonId,targetDateStr){
   if(srcPid==null||li==null) return;
   const lvList=leaves[srcPid]||[];
   const lv=lvList[li]; if(!lv) return;
-  const dur=countWeekdays(lv.start,lv.end)-1;
+  const dur=countCols(lv.start,lv.end)-1;
   // calc new start as targetDateStr, shift end by same weekday duration
   const newStart=targetDateStr;
   let newEnd=newStart;
-  if(dur>0) newEnd=addWeekdays(newStart,dur);
+  if(dur>0) newEnd=addCols(newStart,dur);
   lvList[li]={...lv,start:newStart,end:newEnd};
   _lvDragSrc={personId:null,li:null};
   renderTable();renderStats();if(curSubTab===2)renderLeaveList();fbPush();
