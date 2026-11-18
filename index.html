@@ -817,7 +817,7 @@ td.cell.leave{border-right-color:transparent}
 
   <div class="page-header" style="flex-direction:column;align-items:flex-start;gap:4px;padding:8px 14px">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;width:100%;overflow:hidden">
-      <div class="nav-logo" style="flex-shrink:0"><b>NHN</b><span> marketing design</span><span style="font-size:11px;opacity:.45;margin-left:6px;font-weight:400">v1118-4</span></div>
+      <div class="nav-logo" style="flex-shrink:0"><b>NHN</b><span> marketing design</span><span style="font-size:11px;opacity:.45;margin-left:6px;font-weight:400">v1118-5</span></div>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;width:100%" id="schedule-btn-row">
       <div class="mnav">
@@ -5110,7 +5110,7 @@ function renderTable(){
               const li=(leaves[person.id]||[]).indexOf(lv);
               const lvS=n===dn(lv.start), lvE=n===dn(lv.end); // 여러 날 휴가는 처음·끝만 둥글게 해서 이어 보이게
               lvOverlay=`<div class="lvov" onclick="event.stopPropagation();leaveClick(event,'${person.id}',${li})"
-                style="position:absolute;${_lt.pm?'bottom:0;height:calc(50% - 6px)':'top:10px;height:calc(50% - 11px)'};left:${lvS?'2px':'0'};right:${lvE?'2px':'-1px'};background:${_lt.bg};color:${_lt.color};border-radius:${lvS&&lvE?'6px':lvS?'6px 0 0 6px':lvE?'0 6px 6px 0':'0'};display:flex;align-items:center;z-index:5;cursor:pointer;overflow:hidden">
+                style="position:absolute;${_lt.pm?'bottom:0;height:calc(50% - 6px)':'top:10px;height:calc(50% - 6px)'};left:${lvS?'2px':'0'};right:${lvE?'2px':'-1px'};background:${_lt.bg};color:${_lt.color};border-radius:${lvS&&lvE?'6px':lvS?'6px 0 0 6px':lvE?'0 6px 6px 0':'0'};display:flex;align-items:center;z-index:5;cursor:pointer;overflow:hidden">
                 ${lvS?`<span class="lv-icon">${_lt.icon}</span><span class="lv-lbl">${_lt.label}</span>`:''}
               </div>`;
             }
