@@ -816,7 +816,7 @@ td.cell.leave{border-right-color:transparent}
 
   <div class="page-header" style="flex-direction:column;align-items:flex-start;gap:4px;padding:8px 14px">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;width:100%;overflow:hidden">
-      <div class="nav-logo" style="flex-shrink:0"><b>NHN</b><span> marketing design</span><span style="font-size:11px;opacity:.45;margin-left:6px;font-weight:400">v1119-1</span></div>
+      <div class="nav-logo" style="flex-shrink:0"><b>NHN</b><span> marketing design</span><span style="font-size:11px;opacity:.45;margin-left:6px;font-weight:400">v1119-2</span></div>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;width:100%" id="schedule-btn-row">
       <div class="mnav">
@@ -5096,7 +5096,7 @@ function renderTable(){
                 onmousedown="barMD(event,'${task.id}','${person.id}',${ri},${idx})"
                 onmouseenter="barHover(event,'${task.id}',${ri},'${person.id}')" onmouseleave="hideBubNow()"
                 onclick="barBfClick(event,'${task.id}',${ri})">
-                <div class="bf" style="position:absolute;top:0;bottom:auto;height:${n_>1&&si<n_-1?'calc(100% - 2px)':'100%'};left:0;right:0;overflow:visible;background:${bs.bg};opacity:${bs.op||1};box-shadow:${lvHalfArr[idx]?'inset 0 0 0 99px rgba(0,0,0,.5)':bs.shadow};${sameAbove?'filter:brightness(.8);':''}${isS||isE?'width:auto;':''}${isS?`border-radius:${rad}px 0 0 ${rad}px;margin-left:2px;left:2px;`:''}${isE?`border-radius:0 ${rad}px ${rad}px 0;margin-right:2px;right:2px;`:''}${isS&&isE?`border-radius:${rad}px;margin:0 2px;left:2px;right:2px;`:''}">
+                <div class="bf" style="position:absolute;top:0;bottom:auto;height:${n_>1&&si<n_-1?'calc(100% - 2px)':'100%'};left:0;right:0;overflow:visible;background:${bs.bg};opacity:${bs.op||1};box-shadow:${lvHalfArr[idx]?'inset 0 0 0 99px rgba(0,0,0,.35)':bs.shadow};${sameAbove?'filter:brightness(.8);':''}${isS||isE?'width:auto;':''}${isS?`border-radius:${rad}px 0 0 ${rad}px;margin-left:2px;left:2px;`:''}${isE?`border-radius:0 ${rad}px ${rad}px 0;margin-right:2px;right:2px;`:''}${isS&&isE?`border-radius:${rad}px;margin:0 2px;left:2px;right:2px;`:''}">
                   ${isS&&lblFrom>=0?`<span class="bl" style="color:${bs.tc};max-width:${lblW}px;font-size:${n_>1?'9px':'11px'};${merged?'align-self:flex-start;margin-top:2px;':''}${lblOff?`left:${lblOff}px;`:''}overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${rv.rtitle||proj.name}</span>`:''}
                   ${isS?`<div class="rh rh-l" onmousedown="resizeMD(event,'${task.id}',${ri},'left',${idx})"></div>`:''}
                   ${isE?`<div class="rh rh-r" onmousedown="resizeMD(event,'${task.id}',${ri},'right',${idx})"></div>`:''}
