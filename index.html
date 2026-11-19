@@ -760,7 +760,6 @@ td.cell.leave{border-right-color:transparent}
 :root[data-theme="dark"] .av{background:var(--sf2)!important;color:var(--tx)!important;border-color:var(--bd2)}
 :root[data-theme="dark"] .bub,:root[data-theme="dark"] #g-bub,:root[data-theme="dark"] .dm-popup{background:#242424!important;border-color:#3d3d3d!important;color:#ededed!important}
 :root[data-theme="dark"] .lv-fill{background:#2e2e2e!important;color:#9a9a9a!important}
-:root[data-theme="dark"] .lvov{background:#2e2e2e!important;color:#9a9a9a!important}
 :root[data-theme="dark"] ::-webkit-scrollbar-thumb{background:#3d3d3d}
 /* 위키 표 다크: contenteditable 속성이 벗겨진 셀도 있어(execCommand가 속성 제거) 속성 기반 규칙만으론 절반만 다크 처리됨 → 표 셀 전체 강제 */
 :root[data-theme="dark"] #p1-body table td{background:var(--sur)!important;color:var(--tx)!important;border-color:var(--bd2)!important}
@@ -817,7 +816,7 @@ td.cell.leave{border-right-color:transparent}
 
   <div class="page-header" style="flex-direction:column;align-items:flex-start;gap:4px;padding:8px 14px">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;width:100%;overflow:hidden">
-      <div class="nav-logo" style="flex-shrink:0"><b>NHN</b><span> marketing design</span><span style="font-size:11px;opacity:.45;margin-left:6px;font-weight:400">v1118-9</span></div>
+      <div class="nav-logo" style="flex-shrink:0"><b>NHN</b><span> marketing design</span><span style="font-size:11px;opacity:.45;margin-left:6px;font-weight:400">v1119-1</span></div>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;width:100%" id="schedule-btn-row">
       <div class="mnav">
@@ -5097,7 +5096,7 @@ function renderTable(){
                 onmousedown="barMD(event,'${task.id}','${person.id}',${ri},${idx})"
                 onmouseenter="barHover(event,'${task.id}',${ri},'${person.id}')" onmouseleave="hideBubNow()"
                 onclick="barBfClick(event,'${task.id}',${ri})">
-                <div class="bf" style="position:absolute;top:0;bottom:auto;height:${n_>1&&si<n_-1?'calc(100% - 2px)':'100%'};left:0;right:0;overflow:visible;background:${bs.bg};opacity:${bs.op||1};box-shadow:${bs.shadow};${sameAbove?'filter:brightness(.8);':''}${isS||isE?'width:auto;':''}${isS?`border-radius:${rad}px 0 0 ${rad}px;margin-left:2px;left:2px;`:''}${isE?`border-radius:0 ${rad}px ${rad}px 0;margin-right:2px;right:2px;`:''}${isS&&isE?`border-radius:${rad}px;margin:0 2px;left:2px;right:2px;`:''}">
+                <div class="bf" style="position:absolute;top:0;bottom:auto;height:${n_>1&&si<n_-1?'calc(100% - 2px)':'100%'};left:0;right:0;overflow:visible;background:${bs.bg};opacity:${bs.op||1};box-shadow:${lvHalfArr[idx]?'inset 0 0 0 99px rgba(0,0,0,.5)':bs.shadow};${sameAbove?'filter:brightness(.8);':''}${isS||isE?'width:auto;':''}${isS?`border-radius:${rad}px 0 0 ${rad}px;margin-left:2px;left:2px;`:''}${isE?`border-radius:0 ${rad}px ${rad}px 0;margin-right:2px;right:2px;`:''}${isS&&isE?`border-radius:${rad}px;margin:0 2px;left:2px;right:2px;`:''}">
                   ${isS&&lblFrom>=0?`<span class="bl" style="color:${bs.tc};max-width:${lblW}px;font-size:${n_>1?'9px':'11px'};${merged?'align-self:flex-start;margin-top:2px;':''}${lblOff?`left:${lblOff}px;`:''}overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${rv.rtitle||proj.name}</span>`:''}
                   ${isS?`<div class="rh rh-l" onmousedown="resizeMD(event,'${task.id}',${ri},'left',${idx})"></div>`:''}
                   ${isE?`<div class="rh rh-r" onmousedown="resizeMD(event,'${task.id}',${ri},'right',${idx})"></div>`:''}
@@ -5105,16 +5104,15 @@ function renderTable(){
               </div>`;
             }).join('');
             const hasBar = rs.length>0;
-            // 휴가 겹침: 일정 바는 그대로, 휴가 알약을 막대 세로 가운데에 얹음
+            // 휴가 겹침: 그날 막대를 어둡게(위 .bf 안쪽 그림자 — filter 는 쌓임 층을 만들어 제목이 다음 칸 밑으로 깔림) + 흰 글자로 휴가 종류만 (알약 배경 없음, v1119-1)
             let lvOverlay='';
             if(lvHalfOverlap){
               const li=(leaves[person.id]||[]).indexOf(lv);
-              // 여러 날 휴가는 처음·끝만 둥글게 해서 이어 보이게 + 첫 칸 글자가 다음 칸으로 이어짐(첫 칸 z5 > 나머지 z4)
-              // 하루짜리는 글자 길이만큼 늘려 그 날짜 가운데에 (옆 칸으로 살짝 넘침, v1118-9)
+              // 여러 날 휴가는 첫 칸 글자가 다음 어두운 칸으로 이어짐 · 하루짜리는 그 칸 가운데
               const lvS=n===dn(lv.start), lvE=n===dn(lv.end);
               lvOverlay=`<div class="lvov" onclick="event.stopPropagation();leaveClick(event,'${person.id}',${li})"
-                style="position:absolute;top:calc(25% + 8px);height:calc(50% - 6px);${lvS&&lvE?'left:50%;transform:translateX(-50%);width:max-content;min-width:calc(100% + 10px);justify-content:center;':`left:${lvS?'2px':'0'};right:${lvE?'2px':'-1px'};`}background:${_lt.bg};color:${_lt.color};border-radius:${lvS&&lvE?'6px':lvS?'6px 0 0 6px':lvE?'0 6px 6px 0':'0'};display:flex;align-items:center;z-index:${lvS?5:4};cursor:pointer;overflow:${lvS?'visible':'hidden'}">
-                ${lvS?`<span class="lv-icon">${_lt.icon}</span><span class="lv-lbl" style="flex-shrink:0;padding-right:6px">${_lt.label}</span>`:''}
+                style="position:absolute;top:${msH}px;bottom:0;left:0;right:0;display:flex;align-items:center;${lvS&&lvE?'justify-content:center;':''}color:#fff;text-shadow:0 0 2px rgba(0,0,0,.4);z-index:5;cursor:pointer;overflow:visible">
+                ${lvS?`<span class="lv-lbl" style="flex-shrink:0;overflow:visible;${lvS&&lvE?'padding:0;font-size:10px;letter-spacing:-.3px':''}">${_lt.label}</span>`:''}
               </div>`;
             }
             const cls=`cell bar${isToday?' today':''}${isHolCell?' holiday-cell':''}${!dow||dow===6?' wknd':''}${isWeekStart?' week-start':''}`;
