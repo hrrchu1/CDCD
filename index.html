@@ -816,7 +816,7 @@ td.cell.leave{border-right-color:transparent}
 
   <div class="page-header" style="flex-direction:column;align-items:flex-start;gap:4px;padding:8px 14px">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;width:100%;overflow:hidden">
-      <div class="nav-logo" style="flex-shrink:0"><b>NHN</b><span> marketing design</span><span style="font-size:11px;opacity:.45;margin-left:6px;font-weight:400">v1119-2</span></div>
+      <div class="nav-logo" style="flex-shrink:0"><b>NHN</b><span> marketing design</span><span style="font-size:11px;opacity:.45;margin-left:6px;font-weight:400">v1125-1</span></div>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;width:100%" id="schedule-btn-row">
       <div class="mnav">
@@ -1679,6 +1679,11 @@ td.cell.leave{border-right-color:transparent}
     <div style="margin-top:10px">
       <button class="btn btn-p" style="width:100%" onclick="addNewGroup()">+ 그룹 추가</button>
     </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:14px;font-size:13px;color:var(--tx2)">
+      <span style="flex:1">방문자 비번 <span style="color:var(--tx3)">— 간트만 볼 수 있는 비밀번호, 바꾸면 기존 방문자는 다시 입력</span></span>
+      <input type="text" value="" placeholder="새 비번" autocomplete="off" spellcheck="false" onchange="setSecretPw('visitor',this)"
+        style="width:110px;border:1px solid var(--bd2);border-radius:6px;padding:5px 8px;font-size:13px;font-family:'Pretendard',sans-serif;background:var(--sf2);color:var(--tx);outline:none">
+    </div>
     <div class="ma">
       <button class="btn btn-g" onclick="closeTeamMgr()">닫기</button>
     </div>
@@ -2501,7 +2506,7 @@ function saveEditIdea(idx, wrap){
 // ════════════════════════════════════════════
 // 관리자·툴 잠금·팀원 비밀번호는 Supabase cdcd_secrets 테이블에만 암호화 저장 (확인은 cdcd_verify RPC)
 let _isAdmin = false;
-// 데이터 접근: 방문객 = cdcd_public(간트용 일부만, 읽기 전용) / 팀원·관리자 = cdcd_load·cdcd_save (비번 확인)
+// 데이터 접근: 방문객 = cdcd_public(간트용 일부만, 읽기 전용, 방문자 비번 cd_visitor — 11-25부터) / 팀원·관리자 = cdcd_load·cdcd_save (비번 확인)
 let _auth = null; // {k:'admin'|'team', pw} — 팀원은 공용 비번 하나 (이름은 리뷰 쓸 때만 고름)
 function savedAuths(){
   const a = [];
@@ -2520,11 +2525,40 @@ async function loadFull(auth){
   return true;
 }
 async function reloadData(){
-  if(_auth && await loadFull(_auth)) return;
-  _auth = null;
-  const { data } = await _sb.rpc('cdcd_public');
+  if(_auth){ await loadFull(_auth); return; } // 팀원·관리자: 일시 오류면 지금 화면 유지 (비번이 바뀌었으면 새로고침 때 입구로)
+  const { data, error } = await _sb.rpc('cdcd_public', { p_pw: localStorage.getItem('cd_visitor') || '' });
   if(data) loadFromSbData(data);
+  else if(/bad pw/.test(error?.message||'')){ localStorage.removeItem('cd_visitor'); showGate(); } // 간트도 비번 필요 (11-25)
   applyAccessMode();
+}
+// 입구: 방문자·팀원·관리자 비번 중 아무거나 — 맞는 쪽으로 들어감 (관리자 → 팀원 → 방문자 순으로 확인)
+function showGate(){
+  if(document.getElementById('cd-gate')) return;
+  document.body.insertAdjacentHTML('beforeend', `<div class="boot-veil" id="cd-gate" style="z-index:9500">
+    <div class="cd-lock-card" style="width:300px;padding:28px">
+      <b>비밀번호를 입력해주세요</b><span>방문자·팀원·관리자 비밀번호 중 하나</span>
+      <input type="password" id="gate-pw" placeholder="비밀번호" oninput="koHint(this,'gate-ko-hint')" onkeydown="if(event.key==='Enter')submitGate()"
+        style="width:100%;border:1px solid var(--bd2);border-radius:8px;padding:9px 12px;font-size:15px;outline:none;box-sizing:border-box;background:var(--sur);color:var(--tx)">
+      <div id="gate-ko-hint" style="color:#e53e3e;font-size:13px;display:none">한글로 입력되고 있어요 — 한/영 키를 확인하세요</div>
+      <div id="gate-err" style="color:#e53e3e;font-size:15px;display:none">비밀번호가 틀렸어요</div>
+      <button class="btn btn-p" style="width:100%;margin-top:6px" onclick="submitGate()">확인</button>
+    </div></div>`);
+  setTimeout(()=>document.getElementById('gate-pw')?.focus(), 100);
+}
+async function submitGate(){
+  const inp = document.getElementById('gate-pw'), pw = inp.value;
+  if(!pw || koHint(inp,'gate-ko-hint')) return;
+  document.getElementById('gate-err').style.display='none';
+  if(await loadFull({k:'admin', pw})) localStorage.setItem('cd_admin', pw);
+  else if(await loadFull({k:'team', pw})) localStorage.setItem('cd_member', JSON.stringify({pw}));
+  else {
+    const { data } = await _sb.rpc('cdcd_public', { p_pw: pw });
+    if(!data){ document.getElementById('gate-err').style.display=''; return; }
+    localStorage.setItem('cd_visitor', pw);
+    loadFromSbData(data); applyAccessMode();
+  }
+  document.getElementById('cd-gate').remove();
+  showToast(_isAdmin ? '관리자 모드 활성화' : _auth ? '로그인했어요' : '일정표 보기 모드 — 수정하려면 로그인하세요');
 }
 function applyAccessMode(){
   const pub = !_auth;
@@ -2546,14 +2580,14 @@ function toggleLogin(){
   document.getElementById('login-modal').classList.add('open');
   setTimeout(()=>document.getElementById('login-pw-input').focus(),100);
 }
-// 관리자: 팀원 관리 화면에서 리뷰용 개인 비번 지정 (cdcd_secrets 'member:<id>', 관리자 비번 필요)
-async function setMemberPw(mid, inp){
+// 관리자: 팀원 관리 화면에서 비번 지정 (cdcd_secrets 'member:<id>' 리뷰용 개인 비번 / 'visitor' 방문자 비번, 관리자 비번 필요)
+async function setSecretPw(k, inp){
   const v = inp.value.trim(); if(!v) return;
   if(/[ㄱ-ㅎㅏ-ㅣ가-힣\s]/.test(v)){ showToast('한글이나 공백이 섞였어요 — 한/영 키를 확인하세요','error'); return; }
-  const { data, error } = await _sb.rpc('cdcd_set_pw', { p_admin_pw: localStorage.getItem('cd_admin')||'', p_k: 'member:'+mid, p_new_pw: v });
+  const { data, error } = await _sb.rpc('cdcd_set_pw', { p_admin_pw: localStorage.getItem('cd_admin')||'', p_k: k, p_new_pw: v });
   if(error || data !== true){ showToast('저장 실패 — 관리자 모드를 껐다 다시 켜 주세요','error'); return; }
   inp.value = ''; inp.placeholder = '저장됨';
-  showToast('리뷰 비밀번호를 정했어요');
+  showToast(k==='visitor' ? '방문자 비밀번호를 바꿨어요' : '리뷰 비밀번호를 정했어요');
 }
 // 비밀번호 칸에 한글이 섞이면 한/영 안내 (true = 한글 있음)
 function koHint(inp, hintId){
@@ -6828,7 +6862,7 @@ function renderTeamList(){
         <div style="display:flex;flex-direction:column;gap:3px;align-items:flex-end">
           <div style="font-size:11px;color:var(--tx3)">리뷰 비번</div>
           <input type="text" value="" placeholder="새 비번" draggable="false" autocomplete="off" spellcheck="false"
-            onchange="setMemberPw('${m.id}',this)"
+            onchange="setSecretPw('member:${m.id}',this)"
             style="width:72px;border:1px solid var(--bd2);border-radius:6px;padding:3px 6px;font-size:13px;font-family:'Pretendard',sans-serif;background:var(--sf2);color:var(--tx);outline:none">
         </div>
         <div class="color-input-wrap" title="개인 컬러">
@@ -7121,7 +7155,7 @@ async function initSupabase(){
       localStorage.removeItem(a.k==='admin' ? 'cd_admin' : 'cd_member');
     }
     if(!_auth) await reloadData();
-    showToast(_auth ? 'Supabase 연결 완료! 팀 데이터를 불러왔어요.' : '일정표 보기 모드 — 수정하려면 로그인하세요');
+    if(!document.getElementById('cd-gate')) showToast(_auth ? 'Supabase 연결 완료! 팀 데이터를 불러왔어요.' : '일정표 보기 모드 — 수정하려면 로그인하세요');
 
     // 실시간: 테이블은 잠겨 있어 변경 알림만 주고받고(broadcast), 받으면 각자 권한대로 다시 불러옴
     _sbChannel = _sb.channel(SB_CHANNEL)
