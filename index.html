@@ -816,7 +816,7 @@ td.cell.leave{border-right-color:transparent}
 
   <div class="page-header" style="flex-direction:column;align-items:flex-start;gap:4px;padding:8px 14px">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;width:100%;overflow:hidden">
-      <div class="nav-logo" style="flex-shrink:0"><b>NHN</b><span> marketing design</span><span style="font-size:11px;opacity:.45;margin-left:6px;font-weight:400">v1125-1</span></div>
+      <div class="nav-logo" style="flex-shrink:0"><b>NHN</b><span> marketing design</span><span style="font-size:11px;opacity:.45;margin-left:6px;font-weight:400">v1125-2</span></div>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;width:100%" id="schedule-btn-row">
       <div class="mnav">
@@ -1359,7 +1359,7 @@ td.cell.leave{border-right-color:transparent}
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center" id="cm-status-btns">
           <button type="button" onclick="setCmStatus('wip')"  data-status="wip"  class="status-btn">진행중 <span style="opacity:.5;font-size:13px">1</span></button>
           <button type="button" onclick="setCmStatus('done')" data-status="done" class="status-btn">완료 <span style="opacity:.5;font-size:13px">2</span></button>
-          <button type="button" onclick="setCmStatus('plan')" data-status="plan" class="status-btn">대기중 <span style="opacity:.5;font-size:13px">3</span></button>
+          <button type="button" onclick="setCmStatus('plan')" data-status="plan" class="status-btn">배정 대기 <span style="opacity:.5;font-size:13px">3</span></button>
       </div>
       <button class="btn btn-p" onclick="saveComment()">저장 <span style="opacity:.5;font-size:13px">4</span></button>
       <button class="btn btn-g" onclick="closeCmod()">취소 <span style="opacity:.5;font-size:13px">esc</span></button>
@@ -1398,7 +1398,7 @@ td.cell.leave{border-right-color:transparent}
     <div class="fg"><label>진행중 <span id="op-wip-val" style="color:var(--tx3)"></span></label>
       <input type="range" id="op-wip" min="10" max="100" step="5" oninput="setBarOp('wip',this.value)" style="width:100%">
     </div>
-    <div class="fg"><label>대기중 <span id="op-plan-val" style="color:var(--tx3)"></span></label>
+    <div class="fg"><label>배정 대기 <span id="op-plan-val" style="color:var(--tx3)"></span></label>
       <input type="range" id="op-plan" min="10" max="100" step="5" oninput="setBarOp('plan',this.value)" style="width:100%">
     </div>
     <div class="fg"><label>완료 <span id="op-done-val" style="color:var(--tx3)"></span></label>
@@ -7489,7 +7489,7 @@ document.addEventListener('keydown', e=>{
     }
     hideBubNow();
   }
-  // 1/2/3: 일정 등록/수정 모달에서 상태 빠르게 전환하고 바로 저장+닫기 (진행중/완료/대기중)
+  // 1/2/3: 일정 등록/수정 모달에서 상태 빠르게 전환하고 바로 저장+닫기 (진행중/완료/배정 대기)
   // 4: 저장, 5: 삭제 (취소는 ESC)
   if(document.getElementById('cmod')?.classList.contains('open')){
     const statusKeyMap = {'1':'wip','2':'done','3':'plan'};
